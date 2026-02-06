@@ -1,0 +1,14 @@
+api_version = "2024-10"
+
+[[extensions]]
+type = "theme"
+name = "ReleasitNuevo COD Form"
+handle = "releasitnuevo-form"
+
+  [[extensions.targeting]]
+  module = "./blocks/cod-form-embed.liquid"
+  target = "head"
+
+  [[extensions.targeting]]
+  module = "./blocks/complementa-carrito.liquid"
+  target = "section"

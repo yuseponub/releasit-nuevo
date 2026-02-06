@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Shopify session storage (required by shopify-app-remix)
+model Session {
+  id            String    @id
+  shop          String
+  state         String
+  isOnline      Boolean   @default(false)
+  scope         String?
+  expires       DateTime?
+  accessToken   String
+  userId        BigInt?
+  firstName     String?
+  lastName      String?
+  email         String?
+  accountOwner  Boolean   @default(false)
+  locale        String?
+  collaborator  Boolean?  @default(false)
+  emailVerified Boolean?  @default(false)
+}
+
+// COD Orders created through the form
+model CodOrder {
+  id               Int      @id @default(autoincrement())
+  shop             String
+  shopifyOrderId   String?  @unique
+  shopifyOrderName String?
+  firstName        String
+  lastName         String
+  phone            String
+  phoneConfirm     String?
+  email            String?
+  address          String
+  neighborhood     String?
+  department       String
+  city             String
+  items            String   // JSON string of cart items
+  subtotal         Int      // Price in COP cents
+  shipping         Int      @default(0)
+  total            Int      // Price in COP cents
+  bundleSize       Int      // Total number of products
+  status           String   @default("pending") // pending, confirmed, fulfilled, cancelled
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([shop])
+  @@index([createdAt])
+  @@index([status])
+}
+
+// Draft orders created when user partially fills the form (abandonment)
+model DraftOrder {
+  id                    Int      @id @default(autoincrement())
+  shop                  String
+  shopifyDraftOrderId   String?  @unique
+  firstName             String
+  lastName              String?
+  phone                 String
+  items                 String?  // JSON string of cart items at time of abandonment
+  status                String   @default("open") // open, invoice_sent, completed
+  convertedToOrderId    String?  // If converted to a full order
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([shop])
+  @@index([createdAt])
+  @@index([status])
+}
+
+// Alert configuration per shop
+model AlertConfig {
+  id                  Int      @id @default(autoincrement())
+  shop                String   @unique
+  emailEnabled        Boolean  @default(true)
+  emailTo             String?
+  whatsappEnabled     Boolean  @default(false)
+  whatsappTo          String?
+  checkIntervalMin    Int      @default(30)    // Check every N minutes
+  noOrderThresholdMin Int      @default(60)    // Alert if no orders in N minutes
+  activeHoursStart    String   @default("08:00") // Only check during business hours
+  activeHoursEnd      String   @default("22:00")
+  activeDays          String   @default("1,2,3,4,5,6,7") // Days of week (1=Monday)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// Log of sent alerts
+model AlertLog {
+  id        Int      @id @default(autoincrement())
+  shop      String
+  type      String   // "email", "whatsapp"
+  message   String
+  status    String   // "sent", "failed"
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([shop])
+  @@index([createdAt])
+}
+
+// Log of all form submissions for monitoring
+model FormSubmission {
+  id             Int      @id @default(autoincrement())
+  shop           String
+  type           String   // "COD_ORDER", "DRAFT_ORDER", "ORDER_WEBHOOK"
+  data           String   // JSON string of submitted data
+  shopifyOrderId String?
+  success        Boolean  @default(true)
+  error          String?
+  createdAt      DateTime @default(now())
+
+  @@index([shop])
+  @@index([createdAt])
+  @@index([type])
+}
+
+// Bundle pricing configuration per shop
+model BundlePricing {
+  id        Int      @id @default(autoincrement())
+  shop      String
+  quantity  Int      // Number of items in bundle
+  price     Int      // Price in COP (whole numbers, e.g., 89900)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shop, quantity])
+  @@index([shop])
+}

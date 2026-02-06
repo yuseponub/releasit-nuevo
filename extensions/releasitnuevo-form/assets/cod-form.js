@@ -1,0 +1,654 @@
+/**
+ * ReleasitNuevo COD Form
+ * Mini-cart + Bundle pricing + COD order form
+ * For Somnio Colombia
+ */
+(function () {
+  'use strict';
+
+  const APP_PROXY_BASE = '/apps/releasitnuevo';
+
+  // Bundle pricing table (COP)
+  const BUNDLE_PRICING = {
+    1: 89900,
+    2: 129900,
+    3: 159900,
+  };
+
+  // Colombian departments
+  const DEPARTMENTS = [
+    'Amazonas', 'Antioquia', 'Arauca', 'Atlantico', 'Bolivar',
+    'Boyaca', 'Caldas', 'Caqueta', 'Casanare', 'Cauca',
+    'Cesar', 'Choco', 'Cordoba', 'Cundinamarca', 'Guainia',
+    'Guaviare', 'Huila', 'La Guajira', 'Magdalena', 'Meta',
+    'Narino', 'Norte de Santander', 'Putumayo', 'Quindio',
+    'Risaralda', 'San Andres y Providencia', 'Santander', 'Sucre',
+    'Tolima', 'Valle del Cauca', 'Vaupes', 'Vichada', 'Bogota D.C.'
+  ];
+
+  // State
+  let cart = [];
+  let allProducts = [];
+  let draftSent = false;
+  let draftTimeout = null;
+
+  // Format COP currency
+  function formatCOP(amount) {
+    return '$' + amount.toLocaleString('es-CO');
+  }
+
+  // Calculate bundle price
+  function calcBundlePrice(totalQty) {
+    if (totalQty <= 0) return 0;
+    if (BUNDLE_PRICING[totalQty]) return BUNDLE_PRICING[totalQty];
+    // For quantities > 3, use the best per-unit price
+    return totalQty * Math.round(BUNDLE_PRICING[3] / 3);
+  }
+
+  // Get total quantity in cart
+  function getTotalQty() {
+    return cart.reduce((sum, item) => sum + item.quantity, 0);
+  }
+
+  // Load products from backend
+  async function loadProducts() {
+    try {
+      const resp = await fetch(APP_PROXY_BASE + '/products');
+      const data = await resp.json();
+      if (data.products) {
+        allProducts = data.products;
+      }
+    } catch (e) {
+      console.error('ReleasitNuevo: Failed to load products', e);
+    }
+  }
+
+  // Add product to cart
+  function addToCart(product) {
+    const existing = cart.find(item => item.variantId === product.variantId);
+    if (existing) {
+      existing.quantity++;
+    } else {
+      cart.push({
+        productId: product.productId,
+        variantId: product.variantId,
+        title: product.title,
+        image: product.image,
+        quantity: 1,
+      });
+    }
+    renderCart();
+  }
+
+  // Remove product from cart
+  function removeFromCart(variantId) {
+    cart = cart.filter(item => item.variantId !== variantId);
+    renderCart();
+  }
+
+  // Update quantity
+  function updateQty(variantId, delta) {
+    const item = cart.find(i => i.variantId === variantId);
+    if (!item) return;
+    item.quantity += delta;
+    if (item.quantity <= 0) {
+      removeFromCart(variantId);
+      return;
+    }
+    renderCart();
+  }
+
+  // Build the modal HTML
+  function buildModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'rn-overlay';
+    overlay.id = 'rn-overlay';
+
+    overlay.innerHTML = `
+      <div class="rn-modal" id="rn-modal">
+        <button class="rn-modal-close" id="rn-close" aria-label="Cerrar">&times;</button>
+
+        <div class="rn-header">
+          <h2>Tu Pedido - Pago Contra Entrega</h2>
+          <p>Envio gratis a toda Colombia</p>
+        </div>
+
+        <!-- Mini Cart -->
+        <div class="rn-cart" id="rn-cart-section">
+          <div id="rn-cart-items"></div>
+        </div>
+
+        <!-- Cross-sell inside modal -->
+        <div class="rn-crosssell" id="rn-crosssell" style="display:none;">
+          <p class="rn-crosssell-title">Complementa tu pedido:</p>
+          <div class="rn-crosssell-items" id="rn-crosssell-items"></div>
+        </div>
+
+        <!-- Savings banner -->
+        <div class="rn-savings" id="rn-savings" style="display:none;">
+          <span class="rn-savings-icon">🏷️</span>
+          <span class="rn-savings-text" id="rn-savings-text"></span>
+        </div>
+
+        <!-- Pricing -->
+        <div class="rn-pricing" id="rn-pricing">
+          <div class="rn-pricing-row">
+            <span>Subtotal</span>
+            <span id="rn-subtotal">$0</span>
+          </div>
+          <div class="rn-pricing-row">
+            <span>Envio</span>
+            <span class="rn-pricing-free">GRATIS</span>
+          </div>
+          <div class="rn-pricing-row rn-total">
+            <span>Total</span>
+            <span id="rn-total">$0</span>
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div class="rn-form" id="rn-form-section">
+          <p class="rn-form-title">Datos de envio</p>
+
+          <div class="rn-form-row">
+            <div class="rn-form-group">
+              <label class="rn-form-label">Nombre <span class="rn-required">*</span></label>
+              <input type="text" class="rn-form-input" id="rn-firstName" placeholder="Tu nombre" required>
+            </div>
+            <div class="rn-form-group">
+              <label class="rn-form-label">Apellido <span class="rn-required">*</span></label>
+              <input type="text" class="rn-form-input" id="rn-lastName" placeholder="Tu apellido" required>
+            </div>
+          </div>
+
+          <div class="rn-form-row">
+            <div class="rn-form-group">
+              <label class="rn-form-label">Telefono <span class="rn-required">*</span></label>
+              <input type="tel" class="rn-form-input" id="rn-phone" placeholder="300 123 4567" required>
+            </div>
+            <div class="rn-form-group">
+              <label class="rn-form-label">Confirmar telefono</label>
+              <input type="tel" class="rn-form-input" id="rn-phoneConfirm" placeholder="300 123 4567">
+            </div>
+          </div>
+
+          <div class="rn-form-group">
+            <label class="rn-form-label">Direccion completa <span class="rn-required">*</span></label>
+            <input type="text" class="rn-form-input" id="rn-address" placeholder="Calle, carrera, numero, apto/casa" required>
+          </div>
+
+          <div class="rn-form-group">
+            <label class="rn-form-label">Barrio</label>
+            <input type="text" class="rn-form-input" id="rn-neighborhood" placeholder="Nombre del barrio">
+          </div>
+
+          <div class="rn-form-row">
+            <div class="rn-form-group">
+              <label class="rn-form-label">Departamento <span class="rn-required">*</span></label>
+              <select class="rn-form-select" id="rn-department" required>
+                <option value="">Seleccionar...</option>
+                ${DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('')}
+              </select>
+            </div>
+            <div class="rn-form-group">
+              <label class="rn-form-label">Ciudad <span class="rn-required">*</span></label>
+              <input type="text" class="rn-form-input" id="rn-city" placeholder="Ciudad" required>
+            </div>
+          </div>
+
+          <div class="rn-form-group">
+            <label class="rn-form-label">Correo electronico</label>
+            <input type="email" class="rn-form-input" id="rn-email" placeholder="correo@ejemplo.com">
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="rn-actions" id="rn-actions">
+          <button class="rn-btn-primary" id="rn-submit">
+            CONFIRMA TU PEDIDO - Pagaras al recibir
+          </button>
+          <button class="rn-btn-whatsapp" id="rn-whatsapp">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Pago Digital por Whatsapp
+          </button>
+        </div>
+
+        <!-- Success View -->
+        <div class="rn-success-view" id="rn-success" style="display:none;">
+          <div class="rn-success-icon">✅</div>
+          <h3 class="rn-success-title">¡Pedido Confirmado!</h3>
+          <p class="rn-success-msg">Tu pedido ha sido registrado exitosamente.</p>
+          <p class="rn-success-msg">Recibiras una confirmacion por WhatsApp.</p>
+          <p class="rn-success-order" id="rn-order-name"></p>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    bindModalEvents();
+  }
+
+  // Render cart items
+  function renderCart() {
+    const container = document.getElementById('rn-cart-items');
+    if (!container) return;
+
+    const totalQty = getTotalQty();
+    const bundlePrice = calcBundlePrice(totalQty);
+    const fullPrice = totalQty * BUNDLE_PRICING[1]; // full price at 1-unit rate
+
+    // Render items
+    container.innerHTML = cart.map(item => `
+      <div class="rn-cart-item" data-variant="${item.variantId}">
+        <img class="rn-cart-item-img" src="${item.image || ''}" alt="${item.title}">
+        <div class="rn-cart-item-info">
+          <p class="rn-cart-item-name">${item.title}</p>
+          <p class="rn-cart-item-price">${formatCOP(Math.round(bundlePrice / totalQty))}/u</p>
+        </div>
+        <div class="rn-cart-item-controls">
+          <button class="rn-qty-btn rn-qty-minus" data-variant="${item.variantId}">−</button>
+          <span class="rn-qty-value">${item.quantity}</span>
+          <button class="rn-qty-btn rn-qty-plus" data-variant="${item.variantId}">+</button>
+          <button class="rn-cart-item-remove" data-variant="${item.variantId}">&times;</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Bind qty buttons
+    container.querySelectorAll('.rn-qty-minus').forEach(btn => {
+      btn.addEventListener('click', () => updateQty(btn.dataset.variant, -1));
+    });
+    container.querySelectorAll('.rn-qty-plus').forEach(btn => {
+      btn.addEventListener('click', () => updateQty(btn.dataset.variant, 1));
+    });
+    container.querySelectorAll('.rn-cart-item-remove').forEach(btn => {
+      btn.addEventListener('click', () => removeFromCart(btn.dataset.variant));
+    });
+
+    // Update pricing
+    document.getElementById('rn-subtotal').textContent = formatCOP(bundlePrice);
+    document.getElementById('rn-total').textContent = formatCOP(bundlePrice);
+
+    // Update savings banner
+    const savingsEl = document.getElementById('rn-savings');
+    const savingsText = document.getElementById('rn-savings-text');
+    if (totalQty > 1 && fullPrice > bundlePrice) {
+      const savings = fullPrice - bundlePrice;
+      savingsEl.style.display = 'flex';
+      savingsText.textContent = `¡Ahorras ${formatCOP(savings)} con tu bundle de ${totalQty} productos!`;
+    } else {
+      savingsEl.style.display = 'none';
+    }
+
+    // Update cross-sell
+    renderCrossSell();
+  }
+
+  // Render cross-sell items (products not in cart)
+  function renderCrossSell() {
+    const container = document.getElementById('rn-crosssell-items');
+    const section = document.getElementById('rn-crosssell');
+    if (!container || !section) return;
+
+    const cartVariantIds = cart.map(i => i.variantId);
+    const available = allProducts.filter(p => !cartVariantIds.includes(p.variantId));
+
+    if (available.length === 0) {
+      section.style.display = 'none';
+      return;
+    }
+
+    section.style.display = 'block';
+    container.innerHTML = available.map(p => `
+      <div class="rn-crosssell-item">
+        <img class="rn-crosssell-item-img" src="${p.image || ''}" alt="${p.title}">
+        <div class="rn-crosssell-item-info">
+          <p class="rn-crosssell-item-name">${p.title}</p>
+        </div>
+        <button class="rn-crosssell-add" data-product='${JSON.stringify(p).replace(/'/g, "&#39;")}'>Agregar +</button>
+      </div>
+    `).join('');
+
+    container.querySelectorAll('.rn-crosssell-add').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const product = JSON.parse(btn.dataset.product);
+        addToCart(product);
+      });
+    });
+  }
+
+  // Open modal
+  function openModal(product) {
+    if (product) {
+      addToCart(product);
+    }
+    const overlay = document.getElementById('rn-overlay');
+    if (overlay) {
+      overlay.classList.add('rn-active');
+      document.body.style.overflow = 'hidden';
+      renderCart();
+    }
+  }
+
+  // Close modal
+  function closeModal() {
+    const overlay = document.getElementById('rn-overlay');
+    if (overlay) {
+      overlay.classList.remove('rn-active');
+      document.body.style.overflow = '';
+    }
+  }
+
+  // Bind modal events
+  function bindModalEvents() {
+    document.getElementById('rn-close').addEventListener('click', closeModal);
+    document.getElementById('rn-overlay').addEventListener('click', (e) => {
+      if (e.target.id === 'rn-overlay') closeModal();
+    });
+
+    // Draft order on partial fill (name + phone)
+    const firstNameEl = document.getElementById('rn-firstName');
+    const phoneEl = document.getElementById('rn-phone');
+
+    function checkDraftTrigger() {
+      const firstName = firstNameEl.value.trim();
+      const phone = phoneEl.value.trim();
+      if (firstName && phone && phone.length >= 7 && !draftSent) {
+        clearTimeout(draftTimeout);
+        draftTimeout = setTimeout(() => createDraft(), 3000);
+      }
+    }
+
+    firstNameEl.addEventListener('input', checkDraftTrigger);
+    phoneEl.addEventListener('input', checkDraftTrigger);
+
+    // Submit order
+    document.getElementById('rn-submit').addEventListener('click', submitOrder);
+
+    // WhatsApp button
+    document.getElementById('rn-whatsapp').addEventListener('click', handleWhatsApp);
+  }
+
+  // Create draft order (abandonment tracking)
+  async function createDraft() {
+    if (draftSent) return;
+    draftSent = true;
+
+    const firstName = document.getElementById('rn-firstName').value.trim();
+    const lastName = document.getElementById('rn-lastName').value.trim();
+    const phone = document.getElementById('rn-phone').value.trim();
+
+    try {
+      await fetch(APP_PROXY_BASE + '/create-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          phone,
+          items: cart.map(i => ({
+            variantId: i.variantId,
+            title: i.title,
+            quantity: i.quantity,
+          })),
+        }),
+      });
+    } catch (e) {
+      console.error('ReleasitNuevo: Draft creation failed', e);
+      draftSent = false;
+    }
+  }
+
+  // Validate form
+  function validateForm() {
+    let valid = true;
+
+    // Clear previous errors
+    document.querySelectorAll('.rn-form-error').forEach(el => el.remove());
+    document.querySelectorAll('.rn-error').forEach(el => el.classList.remove('rn-error'));
+
+    function showError(id, msg) {
+      const el = document.getElementById(id);
+      el.classList.add('rn-error');
+      const errDiv = document.createElement('div');
+      errDiv.className = 'rn-form-error';
+      errDiv.textContent = msg;
+      el.parentNode.appendChild(errDiv);
+      valid = false;
+    }
+
+    if (!document.getElementById('rn-firstName').value.trim()) showError('rn-firstName', 'Requerido');
+    if (!document.getElementById('rn-lastName').value.trim()) showError('rn-lastName', 'Requerido');
+
+    const phone = document.getElementById('rn-phone').value.trim();
+    if (!phone) {
+      showError('rn-phone', 'Requerido');
+    } else if (phone.length < 7) {
+      showError('rn-phone', 'Telefono invalido');
+    }
+
+    const phoneConfirm = document.getElementById('rn-phoneConfirm').value.trim();
+    if (phoneConfirm && phoneConfirm !== phone) {
+      showError('rn-phoneConfirm', 'Los telefonos no coinciden');
+    }
+
+    if (!document.getElementById('rn-address').value.trim()) showError('rn-address', 'Requerido');
+    if (!document.getElementById('rn-department').value) showError('rn-department', 'Requerido');
+    if (!document.getElementById('rn-city').value.trim()) showError('rn-city', 'Requerido');
+
+    if (cart.length === 0) {
+      valid = false;
+      alert('Agrega al menos un producto a tu carrito');
+    }
+
+    return valid;
+  }
+
+  // Submit order
+  async function submitOrder() {
+    if (!validateForm()) return;
+
+    const btn = document.getElementById('rn-submit');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="rn-spinner"></span> Procesando...';
+
+    const totalQty = getTotalQty();
+    const bundlePrice = calcBundlePrice(totalQty);
+
+    const data = {
+      firstName: document.getElementById('rn-firstName').value.trim(),
+      lastName: document.getElementById('rn-lastName').value.trim(),
+      phone: document.getElementById('rn-phone').value.trim(),
+      phoneConfirm: document.getElementById('rn-phoneConfirm').value.trim(),
+      email: document.getElementById('rn-email').value.trim(),
+      address: document.getElementById('rn-address').value.trim(),
+      neighborhood: document.getElementById('rn-neighborhood').value.trim(),
+      department: document.getElementById('rn-department').value,
+      city: document.getElementById('rn-city').value.trim(),
+      items: cart.map(i => ({
+        variantId: i.variantId,
+        title: i.title,
+        quantity: i.quantity,
+      })),
+      bundleSize: totalQty,
+      total: bundlePrice,
+    };
+
+    try {
+      const resp = await fetch(APP_PROXY_BASE + '/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const result = await resp.json();
+
+      if (result.success) {
+        // Show success
+        document.getElementById('rn-cart-section').style.display = 'none';
+        document.getElementById('rn-crosssell').style.display = 'none';
+        document.getElementById('rn-savings').style.display = 'none';
+        document.getElementById('rn-pricing').style.display = 'none';
+        document.getElementById('rn-form-section').style.display = 'none';
+        document.getElementById('rn-actions').style.display = 'none';
+
+        document.getElementById('rn-order-name').textContent =
+          'Orden: ' + (result.orderName || result.orderId);
+        document.getElementById('rn-success').style.display = 'block';
+
+        // Reset state
+        cart = [];
+        draftSent = false;
+      } else {
+        alert('Error al crear el pedido: ' + (result.error || 'Intenta de nuevo'));
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    } catch (e) {
+      console.error('ReleasitNuevo: Order submission failed', e);
+      alert('Error de conexion. Por favor intenta de nuevo.');
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
+  }
+
+  // Handle WhatsApp button
+  function handleWhatsApp() {
+    const totalQty = getTotalQty();
+    const bundlePrice = calcBundlePrice(totalQty);
+    const itemsList = cart.map(i => `${i.title} x${i.quantity}`).join(', ');
+
+    const message = encodeURIComponent(
+      `Hola! Quiero hacer un pedido con pago digital:\n\n` +
+      `Productos: ${itemsList}\n` +
+      `Total: ${formatCOP(bundlePrice)}\n\n` +
+      `Nombre: ${document.getElementById('rn-firstName').value.trim()} ${document.getElementById('rn-lastName').value.trim()}\n` +
+      `Telefono: ${document.getElementById('rn-phone').value.trim()}`
+    );
+
+    // Replace with actual WhatsApp number
+    const whatsappNumber = '573000000000';
+    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+  }
+
+  // Inject COD button on product page
+  function injectCODButton() {
+    // Try to find the add-to-cart form
+    const productForm = document.querySelector('form[action*="/cart/add"]');
+    if (!productForm) return;
+
+    // Get current product info from the page
+    const productData = getProductFromPage();
+    if (!productData) return;
+
+    // Check if button already exists
+    if (document.getElementById('rn-cod-trigger')) return;
+
+    const codBtn = document.createElement('button');
+    codBtn.type = 'button';
+    codBtn.id = 'rn-cod-trigger';
+    codBtn.className = 'rn-cod-button';
+    codBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+      </svg>
+      PAGAR AL RECIBIR
+    `;
+
+    codBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openModal(productData);
+    });
+
+    // Insert after the add-to-cart button or the form
+    const addToCartBtn = productForm.querySelector('[type="submit"], button[name="add"]');
+    if (addToCartBtn) {
+      addToCartBtn.parentNode.insertBefore(codBtn, addToCartBtn.nextSibling);
+    } else {
+      productForm.appendChild(codBtn);
+    }
+  }
+
+  // Extract product data from the current page
+  function getProductFromPage() {
+    // Try to get product data from Shopify's global object
+    if (typeof meta !== 'undefined' && meta.product) {
+      const p = meta.product;
+      const variant = p.variants ? p.variants[0] : null;
+      return {
+        productId: String(p.id),
+        variantId: String(variant ? variant.id : p.id),
+        title: p.title || document.title,
+        image: p.featured_image || '',
+      };
+    }
+
+    // Fallback: try to parse from product JSON in the page
+    const productJsonEl = document.querySelector('[data-product-json], script[type="application/json"][data-product]');
+    if (productJsonEl) {
+      try {
+        const data = JSON.parse(productJsonEl.textContent);
+        return {
+          productId: String(data.id),
+          variantId: String(data.variants[0].id),
+          title: data.title,
+          image: data.featured_image || (data.images && data.images[0]) || '',
+        };
+      } catch (e) { /* continue */ }
+    }
+
+    // Another fallback: get from ShopifyAnalytics
+    if (typeof ShopifyAnalytics !== 'undefined' && ShopifyAnalytics.meta && ShopifyAnalytics.meta.product) {
+      const p = ShopifyAnalytics.meta.product;
+      return {
+        productId: String(p.id),
+        variantId: String(p.variants ? p.variants[0].id : p.id),
+        title: p.title || document.querySelector('h1')?.textContent || document.title,
+        image: '',
+      };
+    }
+
+    return null;
+  }
+
+  // Initialize
+  async function init() {
+    // Load products for cross-sell
+    await loadProducts();
+
+    // Build modal
+    buildModal();
+
+    // Inject COD button on product pages
+    if (window.location.pathname.includes('/products/')) {
+      injectCODButton();
+    }
+
+    // Listen for custom events (from complementa-carrito block)
+    document.addEventListener('rn:add-to-cart', (e) => {
+      if (e.detail && e.detail.product) {
+        addToCart(e.detail.product);
+        openModal();
+      }
+    });
+
+    document.addEventListener('rn:open-modal', () => {
+      openModal();
+    });
+  }
+
+  // Wait for DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // Expose for external use
+  window.ReleasitNuevo = {
+    openModal,
+    addToCart,
+    getCart: () => [...cart],
+  };
+})();

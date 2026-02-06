@@ -1,0 +1,104 @@
+{% comment %}
+  ReleasitNuevo - Complementa tu Carrito
+  App Block for product pages - shows cross-sell buttons for other products.
+{% endcomment %}
+
+{% if block.settings.enabled %}
+<div class="rn-complement" id="rn-complement-block">
+  <p class="rn-complement-title">{{ block.settings.title }}</p>
+  <div id="rn-complement-products">
+    {% comment %} Products are loaded dynamically via JS from the app proxy {% endcomment %}
+    <p style="font-size: 13px; color: #6B7280;">Cargando productos...</p>
+  </div>
+</div>
+
+<script>
+  (function() {
+    const currentProductId = '{{ product.id }}';
+
+    async function loadComplementProducts() {
+      try {
+        const resp = await fetch('/apps/releasitnuevo/products');
+        const data = await resp.json();
+
+        if (!data.products || data.products.length === 0) return;
+
+        const container = document.getElementById('rn-complement-products');
+        if (!container) return;
+
+        const otherProducts = data.products.filter(
+          p => String(p.productId) !== currentProductId
+        );
+
+        if (otherProducts.length === 0) {
+          container.parentElement.style.display = 'none';
+          return;
+        }
+
+        container.innerHTML = otherProducts.map(p => `
+          <div class="rn-complement-item">
+            <img class="rn-complement-item-img"
+                 src="${p.image || ''}"
+                 alt="${p.title}">
+            <div class="rn-complement-item-info">
+              <p class="rn-complement-item-name">${p.title}</p>
+              <p class="rn-complement-item-price">Desde $89.900</p>
+            </div>
+            <button class="rn-complement-add"
+                    data-product-id="${p.productId}"
+                    data-variant-id="${p.variantId}"
+                    data-title="${p.title}"
+                    data-image="${p.image || ''}">
+              Agregar +
+            </button>
+          </div>
+        `).join('');
+
+        // Bind click events
+        container.querySelectorAll('.rn-complement-add').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const product = {
+              productId: btn.dataset.productId,
+              variantId: btn.dataset.variantId,
+              title: btn.dataset.title,
+              image: btn.dataset.image,
+            };
+            document.dispatchEvent(new CustomEvent('rn:add-to-cart', {
+              detail: { product }
+            }));
+          });
+        });
+      } catch (e) {
+        console.error('ReleasitNuevo: Failed to load complement products', e);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadComplementProducts);
+    } else {
+      loadComplementProducts();
+    }
+  })();
+</script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Complementa tu Carrito",
+  "target": "section",
+  "settings": [
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Activar seccion",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "title",
+      "label": "Titulo de la seccion",
+      "default": "Complementa tu carrito"
+    }
+  ]
+}
+{% endschema %}

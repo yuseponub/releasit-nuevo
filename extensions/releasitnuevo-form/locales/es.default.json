@@ -1,0 +1,30 @@
+{
+  "releasitnuevo_cod_form": {
+    "name": "ReleasitNuevo COD Form",
+    "settings": {
+      "enabled": {
+        "label": "Activar formulario COD"
+      },
+      "button_text": {
+        "label": "Texto del boton"
+      },
+      "primary_color": {
+        "label": "Color principal"
+      },
+      "whatsapp_number": {
+        "label": "Numero de WhatsApp"
+      }
+    }
+  },
+  "complementa_carrito": {
+    "name": "Complementa tu Carrito",
+    "settings": {
+      "enabled": {
+        "label": "Activar seccion"
+      },
+      "title": {
+        "label": "Titulo de la seccion"
+      }
+    }
+  }
+}

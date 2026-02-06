@@ -1,0 +1,81 @@
+{% comment %}
+  ReleasitNuevo COD Form - App Embed Block
+  This block injects globally across the store.
+  It loads the modal, mini-cart, and COD form functionality.
+{% endcomment %}
+
+{{ 'cod-form.css' | asset_url | stylesheet_tag }}
+
+<script>
+  // Pass shop and proxy URL info to the script
+  window.__RELEASITNUEVO__ = {
+    shop: '{{ shop.permanent_domain }}',
+    proxyBase: '/apps/releasitnuevo',
+    currency: '{{ shop.currency }}',
+    moneyFormat: {{ shop.money_format | json }}
+  };
+</script>
+
+<script src="{{ 'cod-form.js' | asset_url }}" defer></script>
+
+{% schema %}
+{
+  "name": "ReleasitNuevo COD Form",
+  "target": "head",
+  "javascript": "cod-form.js",
+  "stylesheet": "cod-form.css",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Configuracion General"
+    },
+    {
+      "type": "checkbox",
+      "id": "enabled",
+      "label": "Activar formulario COD",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "button_text",
+      "label": "Texto del boton",
+      "default": "PAGAR AL RECIBIR"
+    },
+    {
+      "type": "color",
+      "id": "primary_color",
+      "label": "Color principal",
+      "default": "#2D9B83"
+    },
+    {
+      "type": "text",
+      "id": "whatsapp_number",
+      "label": "Numero de WhatsApp (con codigo pais)",
+      "default": "573000000000",
+      "info": "Ejemplo: 573001234567"
+    },
+    {
+      "type": "header",
+      "content": "Precios Bundle"
+    },
+    {
+      "type": "text",
+      "id": "price_1",
+      "label": "Precio 1 unidad (COP)",
+      "default": "89900"
+    },
+    {
+      "type": "text",
+      "id": "price_2",
+      "label": "Precio 2 unidades (COP)",
+      "default": "129900"
+    },
+    {
+      "type": "text",
+      "id": "price_3",
+      "label": "Precio 3 unidades (COP)",
+      "default": "159900"
+    }
+  ]
+}
+{% endschema %}
