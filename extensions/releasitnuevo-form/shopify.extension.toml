@@ -1,6 +1,7 @@
 api_version = "2024-10"
 
 [[extensions]]
+uid = "7254cc9d-8262-dbaf-3ae1-5da1c90418fa4d8d2fa0"
 type = "theme"
 name = "ReleasitNuevo COD Form"
 handle = "releasitnuevo-form"

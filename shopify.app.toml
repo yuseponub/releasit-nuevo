@@ -1,28 +1,25 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
-client_id = "REPLACE_WITH_YOUR_CLIENT_ID"
-name = "ReleasitNuevo"
+client_id = "42971e68eda54221386b3041bee041e3"
+name = "realamorfx"
 application_url = "https://localhost:3000"
 embedded = true
 
+[build]
+automatically_update_urls_on_dev = true
+dev_store_url = "realamorfx.myshopify.com"
+
+[webhooks]
+api_version = "2025-10"
+
 [access_scopes]
-scopes = "write_orders,read_orders,write_draft_orders,read_draft_orders,read_products,write_products,read_customers,write_customers"
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_customers,write_customers,write_draft_orders,read_draft_orders,read_orders,write_orders,read_products,write_products"
+optional_scopes = [ ]
+use_legacy_install_flow = false
 
 [auth]
 redirect_urls = [ "https://localhost:3000/auth/callback" ]
-
-[webhooks]
-api_version = "2024-10"
-
-  [webhooks.privacy_compliance]
-  customer_deletion_url = "https://localhost:3000/webhooks"
-  customer_data_request_url = "https://localhost:3000/webhooks"
-  shop_deletion_url = "https://localhost:3000/webhooks"
-
-[app_proxy]
-url = "https://localhost:3000/api/proxy"
-subpath = "releasitnuevo"
-prefix = "apps"
 
 [pos]
 embedded = false
