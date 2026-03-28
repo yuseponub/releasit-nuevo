@@ -166,6 +166,11 @@
   color: #666;
 }
 
+.rn-upsell-light .rn-upsell-benefits {
+  font-size: 11px;
+  color: #444;
+}
+
 .rn-upsell-img {
   width: 55px;
   height: 55px;
