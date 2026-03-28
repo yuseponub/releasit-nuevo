@@ -288,7 +288,7 @@
       const cardRect = activeCard.getBoundingClientRect();
 
       const topOffset = cardRect.top + cardRect.height / 2 - sectionRect.top;
-      const lineHeight = sectionRect.bottom - (cardRect.top + cardRect.height / 2) + 15;
+      const lineHeight = sectionRect.bottom - (cardRect.top + cardRect.height / 2) + 30;
 
       line.style.marginTop = topOffset + 'px';
       line.style.height = lineHeight + 'px';
