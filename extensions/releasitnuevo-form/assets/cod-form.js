@@ -254,9 +254,6 @@
       return html;
     }).join('');
 
-    // Add vertical connector line after all cards
-    container.innerHTML += '<div class="rn-connector-line" style="height:14px;"></div>';
-
     // Bind click events on variant cards
     container.querySelectorAll('.rn-variant-card').forEach(card => {
       card.addEventListener('click', () => {
@@ -282,7 +279,31 @@
 
   // Draw connector vertical line from active variant down to pricing
   function drawConnector() {
-    // no-op, using CSS only now
+    const old = document.querySelector('.rn-connector-v');
+    if (old) old.remove();
+
+    const activeCard = document.querySelector('.rn-variant-card.rn-variant-active');
+    const pricing = document.getElementById('rn-pricing');
+    const variants = document.getElementById('rn-variants');
+    if (!activeCard || !pricing || !variants) return;
+
+    const vRect = variants.getBoundingClientRect();
+    const cardRect = activeCard.getBoundingClientRect();
+    const pricingRect = pricing.getBoundingClientRect();
+
+    // Start from middle of active card
+    const startY = cardRect.top + cardRect.height / 2 - vRect.top;
+    // End at top of pricing card
+    const endY = pricingRect.top - vRect.top;
+    const height = endY - startY;
+
+    if (height <= 0) return;
+
+    const line = document.createElement('div');
+    line.className = 'rn-connector-v';
+    line.style.top = startY + 'px';
+    line.style.height = height + 'px';
+    variants.appendChild(line);
   }
 
   // Update pricing display

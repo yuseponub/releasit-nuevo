@@ -137,6 +137,8 @@
 /* Variant Cards */
 .rn-variants {
   padding: 5px 21px 0 6px;
+  position: relative;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -176,11 +178,13 @@
   background: var(--rn-primary);
 }
 
-.rn-connector-line {
+/* Vertical connector line running down the right side */
+.rn-connector-v {
+  position: absolute;
+  right: 6px;
   width: 2px;
   background: var(--rn-primary);
-  margin-left: auto;
-  margin-right: 6px;
+  pointer-events: none;
 }
 
 .rn-variant-img {
