@@ -281,15 +281,19 @@
     setTimeout(() => {
       const line = document.getElementById('rn-connected-line');
       const activeCard = document.querySelector('.rn-variant-card.rn-variant-active');
-      const section = document.getElementById('rn-connected-section');
-      if (!line || !activeCard || !section) return;
+      const variants = document.getElementById('rn-variants');
+      if (!line || !activeCard || !variants) return;
 
-      const sectionRect = section.getBoundingClientRect();
+      // Reset first to get clean measurements
+      line.style.marginTop = '0';
+      line.style.height = '0';
+      line.classList.remove('rn-line-visible');
+
+      const variantsRect = variants.getBoundingClientRect();
       const cardRect = activeCard.getBoundingClientRect();
 
-      const topOffset = cardRect.top + cardRect.height / 2 - sectionRect.top;
-      // Line goes from middle of active card to bottom of section (which touches pricing)
-      const lineHeight = sectionRect.height - topOffset + 2;
+      const topOffset = cardRect.top + cardRect.height / 2 - variantsRect.top;
+      const lineHeight = variantsRect.height - topOffset + 2;
 
       line.style.marginTop = topOffset + 'px';
       line.style.height = lineHeight + 'px';
