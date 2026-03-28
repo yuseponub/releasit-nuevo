@@ -165,6 +165,31 @@
   box-shadow: 0 0 0 1px var(--rn-primary);
 }
 
+/* Connector line from active variant to pricing */
+.rn-connector {
+  position: absolute;
+  right: 13px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.rn-connector-h {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 8px;
+  height: 2px;
+  background: var(--rn-primary);
+}
+
+.rn-connector-v {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 2px;
+  background: var(--rn-primary);
+}
+
 .rn-variant-img {
   width: 50px;
   align-self: stretch;
