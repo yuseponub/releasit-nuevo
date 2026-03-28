@@ -48,7 +48,7 @@
   background: var(--rn-bg);
   border-radius: var(--rn-radius) var(--rn-radius) 0 0;
   width: 100%;
-  max-height: calc(100vh - 30px);
+  height: calc(100vh - 30px);
   overflow-y: auto;
   box-shadow: var(--rn-shadow);
   animation: rn-slideUp 0.3s ease;
