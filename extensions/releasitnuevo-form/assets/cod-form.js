@@ -274,7 +274,7 @@
           <div class="rn-extra-item" style="background:${ep.bg || 'transparent'};">
             <img class="rn-extra-img" src="${ep.image}" alt="${ep.title}">
             <div class="rn-extra-info">
-              <p class="rn-extra-name">+ ${ep.title}</p>
+              <p class="rn-extra-name">+ ${ep.title} ${ep.badge ? `<span class="rn-extra-badge">${ep.badge}</span>` : ''}</p>
             </div>
             <div class="rn-extra-price">${formatCOP(ep.price)}</div>
             <button class="rn-extra-remove" data-extra-id="${ep.id}">&times;</button>
@@ -554,10 +554,11 @@
         extraProducts.push({
           id: 'ashwagandha',
           variantId: 'ashwagandha-1',
-          title: 'KSM-66 Ashwagandha',
+          title: 'ASHWAGANDHA',
           image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221',
           price: 49900,
           bg: '#FFF1D5',
+          badge: '$30,000 OFF',
         });
         renderVariantCards();
         updatePricing();
@@ -569,10 +570,11 @@
         extraProducts.push({
           id: 'magnesio-forte',
           variantId: 'magnesio-forte-1',
-          title: 'Magnesio Forte',
+          title: 'MAGNESIO FORTE',
           image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235',
           price: 49900,
           bg: '#FCEAED',
+          badge: '$30,000 OFF',
         });
         renderVariantCards();
         updatePricing();

@@ -439,6 +439,19 @@
   font-weight: 600;
   color: var(--rn-primary-dark);
   margin: 0;
+  text-transform: uppercase;
+}
+
+.rn-extra-badge {
+  display: inline-block;
+  background: #EF4444;
+  color: white;
+  font-size: 8px;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-left: 3px;
 }
 
 .rn-extra-price {
