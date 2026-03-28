@@ -136,9 +136,7 @@
 
 /* Variant Cards */
 .rn-variants {
-  padding: 5px 21px 0 6px;
-  position: relative;
-  overflow: visible;
+  padding: 5px 21px 5px 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -165,27 +163,8 @@
   border: 3px solid var(--rn-primary);
   background: #D8EFEC;
   box-shadow: 0 0 0 1px var(--rn-primary);
-  position: relative;
 }
 
-.rn-variant-card.rn-variant-active::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -15px;
-  width: 12px;
-  height: 2px;
-  background: var(--rn-primary);
-}
-
-/* Vertical connector line running down the right side */
-.rn-connector-v {
-  position: absolute;
-  right: 6px;
-  width: 2px;
-  background: var(--rn-primary);
-  pointer-events: none;
-}
 
 .rn-variant-img {
   width: 50px;
