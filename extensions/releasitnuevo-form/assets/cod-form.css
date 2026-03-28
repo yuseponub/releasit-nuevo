@@ -160,8 +160,9 @@
 }
 
 .rn-variant-card.rn-variant-active {
-  border-color: var(--rn-primary);
-  background: var(--rn-primary-light);
+  border: 3px solid var(--rn-primary);
+  background: #D8EFEC;
+  box-shadow: 0 0 0 1px var(--rn-primary);
 }
 
 .rn-variant-img {
