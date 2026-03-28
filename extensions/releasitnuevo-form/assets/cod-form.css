@@ -22,27 +22,28 @@
 /* Overlay */
 .rn-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.5);
   z-index: 99999;
   display: none;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 30px 0 0 0;
   backdrop-filter: blur(4px);
 }
 
 .rn-overlay.rn-active {
-  display: flex;
+  display: block;
 }
 
 /* Modal wrapper for overflow visible */
 .rn-modal-wrapper {
-  position: relative;
+  position: absolute;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 0;
   width: 95vw;
-  max-width: 95vw;
-  height: calc(100vh - 30px);
-  height: calc(100dvh - 30px);
 }
 
 /* Modal */
@@ -743,9 +744,8 @@
     width: 95%;
   }
 
-  .rn-overlay {
-    align-items: flex-start;
-    padding: 30px 0 0 0;
+  .rn-modal-wrapper {
+    width: 95vw;
   }
 
   .rn-form-row {
