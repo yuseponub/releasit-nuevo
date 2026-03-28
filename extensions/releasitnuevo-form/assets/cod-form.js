@@ -107,7 +107,7 @@
   ];
 
   // Get compare-at prices for savings calculation
-  const COMPARE_PRICES = { 1: 120000, 2: 220000, 3: 330000 };
+  const COMPARE_PRICES = { 1: 120000, 2: 240000, 3: 360000 };
 
   // Selected variant in modal
   let selectedModalVariant = 1;
@@ -361,10 +361,13 @@
   // Update pricing display
   function updatePricing() {
     const basePrice = BUNDLE_PRICING[selectedModalVariant] || 0;
+    const baseCompare = COMPARE_PRICES[selectedModalVariant] || basePrice;
+    const baseDiscount = baseCompare - basePrice;
     const extrasCompareTotal = extraProducts.reduce((sum, ep) => sum + (ep.comparePrice || ep.price), 0);
     const extrasActualTotal = extraProducts.reduce((sum, ep) => sum + ep.price, 0);
-    const discount = extrasCompareTotal - extrasActualTotal;
-    const subtotal = basePrice + extrasCompareTotal;
+    const extrasDiscount = extrasCompareTotal - extrasActualTotal;
+    const totalDiscount = baseDiscount + extrasDiscount;
+    const subtotal = baseCompare + extrasCompareTotal;
     const total = basePrice + extrasActualTotal;
 
     const subtotalEl = document.getElementById('rn-subtotal');
@@ -376,9 +379,9 @@
     if (totalEl) totalEl.textContent = formatCOP(total);
 
     if (discountRow && discountEl) {
-      if (discount > 0) {
+      if (totalDiscount > 0) {
         discountRow.style.display = 'flex';
-        discountEl.textContent = '-' + formatCOP(discount);
+        discountEl.textContent = '-' + formatCOP(totalDiscount);
       } else {
         discountRow.style.display = 'none';
       }
@@ -386,7 +389,7 @@
 
     const pricing = document.getElementById('rn-pricing');
     if (pricing) {
-      if (extraProducts.length > 0) {
+      if (totalDiscount > 0) {
         pricing.classList.add('rn-pricing-compact');
       } else {
         pricing.classList.remove('rn-pricing-compact');
