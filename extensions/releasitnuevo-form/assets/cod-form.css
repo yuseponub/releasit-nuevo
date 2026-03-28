@@ -100,12 +100,37 @@
   background: #4B5563;
 }
 
-/* Trust badge */
+/* Trust badge with clickable areas */
+.rn-trust-wrapper {
+  position: relative;
+  padding: 6px 6px 0;
+}
+
 .rn-trust-badge {
   width: 100%;
   display: block;
-  padding: 6px 6px 0;
-  box-sizing: border-box;
+}
+
+.rn-trust-btn {
+  position: absolute;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.rn-trust-btn-left {
+  left: 4%;
+  bottom: 8%;
+  width: 30%;
+  height: 35%;
+}
+
+.rn-trust-btn-right {
+  right: 4%;
+  bottom: 8%;
+  width: 30%;
+  height: 35%;
 }
 
 /* Banner */

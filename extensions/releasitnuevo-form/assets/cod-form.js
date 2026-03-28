@@ -150,7 +150,11 @@
           </div>
         </div>
 
-        <img class="rn-trust-badge" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Texto_del_parrafo_15.jpg?v=1774715984" alt="Trust badges">
+        <div class="rn-trust-wrapper">
+          <img class="rn-trust-badge" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Texto_del_parrafo_15.jpg?v=1774715984" alt="Trust badges">
+          <button class="rn-trust-btn rn-trust-btn-left" id="rn-add-ashwagandha" aria-label="Agregar Ashwagandha"></button>
+          <button class="rn-trust-btn rn-trust-btn-right" id="rn-add-magnesio" aria-label="Agregar Magnesio Forte"></button>
+        </div>
 
         <!-- Form -->
         <div class="rn-form" id="rn-form-section">
@@ -494,6 +498,31 @@
 
     firstNameEl.addEventListener('input', checkDraftTrigger);
     phoneEl.addEventListener('input', checkDraftTrigger);
+
+    // Cross-sell add buttons
+    document.getElementById('rn-add-ashwagandha').addEventListener('click', () => {
+      addToCart({
+        productId: 'ashwagandha',
+        variantId: 'ashwagandha-1',
+        title: 'KSM-66 Ashwagandha',
+        image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
+        quantity: 1,
+      });
+      renderVariantCards();
+      updatePricing();
+    });
+
+    document.getElementById('rn-add-magnesio').addEventListener('click', () => {
+      addToCart({
+        productId: 'magnesio-forte',
+        variantId: 'magnesio-forte-1',
+        title: 'Magnesio Forte',
+        image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
+        quantity: 1,
+      });
+      renderVariantCards();
+      updatePricing();
+    });
 
     // Submit order
     document.getElementById('rn-submit').addEventListener('click', submitOrder);
