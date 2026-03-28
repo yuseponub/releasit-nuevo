@@ -100,9 +100,9 @@
 
   // Variant options for the modal
   const VARIANT_OPTIONS = [
-    { key: 1, label: '1 ELIXIR DEL SUENO', qty: 1 },
-    { key: 2, label: 'x2 ELIXIR DEL SUENO con un 50% de descuento!', qty: 2 },
-    { key: 3, label: 'x3 ELIXIR DEL SUENO con un 58% de descuento!', qty: 3 },
+    { key: 1, label: '1 Elixir del Sueno', qty: 1 },
+    { key: 2, label: 'x2 Elixir del Sueno', qty: 2 },
+    { key: 3, label: 'x3 Elixir del Sueno', qty: 3 },
   ];
 
   // Get compare-at prices for savings calculation

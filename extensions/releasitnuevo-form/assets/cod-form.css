@@ -93,7 +93,7 @@
   position: sticky;
   top: 0;
   background: var(--rn-bg);
-  padding: 16px 16px 12px 24px;
+  padding: 8px 12px 8px 16px;
   border-bottom: 1px solid var(--rn-border);
   display: flex;
   align-items: center;
@@ -103,7 +103,7 @@
 
 .rn-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--rn-text);
   flex: 1;
@@ -111,21 +111,23 @@
 
 /* Variant Cards */
 .rn-variants {
-  padding: 16px 24px;
+  padding: 10px 12px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .rn-variant-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 8px 10px;
   border: 1.5px solid var(--rn-border);
   border-radius: var(--rn-radius-sm);
   cursor: pointer;
   transition: all 0.15s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .rn-variant-card:hover {
@@ -138,9 +140,9 @@
 }
 
 .rn-variant-img {
-  width: 55px;
-  height: 55px;
-  border-radius: 6px;
+  width: 42px;
+  height: 42px;
+  border-radius: 5px;
   object-fit: cover;
   flex-shrink: 0;
 }
@@ -151,20 +153,23 @@
 }
 
 .rn-variant-name {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--rn-text);
-  margin: 0 0 4px;
+  margin: 0 0 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rn-variant-badge {
   display: inline-block;
   background: var(--rn-success);
   color: white;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 1px 6px;
+  border-radius: 3px;
 }
 
 .rn-variant-prices {
@@ -174,14 +179,14 @@
 
 .rn-variant-compare {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--rn-text-light);
   text-decoration: line-through;
 }
 
 .rn-variant-price {
   display: block;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--rn-text);
 }
