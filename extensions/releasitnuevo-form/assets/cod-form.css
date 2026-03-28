@@ -39,9 +39,8 @@
 /* Modal wrapper for overflow visible */
 .rn-modal-wrapper {
   position: relative;
-  width: 100%;
+  width: 90%;
   max-width: 520px;
-  margin: 0 16px;
 }
 
 /* Modal */
@@ -53,6 +52,12 @@
   overflow-y: auto;
   box-shadow: var(--rn-shadow);
   animation: rn-slideUp 0.3s ease;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.rn-modal::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes rn-slideUp {
@@ -727,7 +732,7 @@
   }
 
   .rn-modal-wrapper {
-    margin: 0 12px;
+    width: 92%;
   }
 
   .rn-overlay {
