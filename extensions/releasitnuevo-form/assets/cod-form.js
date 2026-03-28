@@ -184,7 +184,7 @@
 
         <!-- Form -->
         <div class="rn-form" id="rn-form-section">
-          <p class="rn-form-title">Llene los siguientes datos para envio contraentrega:</p>
+          <p class="rn-form-title">LLENE LOS SIGUIENTES DATOS PARA ENVIO CONTRAENTREGA:</p>
 
           <div class="rn-form-group">
             <label class="rn-form-label">Nombre <span class="rn-required">*</span></label>
