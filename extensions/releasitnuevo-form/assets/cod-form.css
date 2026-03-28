@@ -149,10 +149,9 @@
 .rn-connected-line {
   width: 3px;
   background: var(--rn-primary);
-  margin: 0 10px;
+  margin: 0 8px;
   border-radius: 2px;
   display: none;
-  align-self: flex-start;
 }
 
 .rn-connected-line.rn-line-visible {
@@ -458,10 +457,10 @@
 /* Pricing summary */
 .rn-pricing {
   background: var(--rn-bg-gray);
-  margin: 6px 6px;
+  margin: 6px 0 6px 6px;
   padding: 8px 12px;
   border-radius: 6px;
-  border: 1px solid var(--rn-border);
+  border: 2px solid var(--rn-primary);
 }
 
 .rn-pricing-row {

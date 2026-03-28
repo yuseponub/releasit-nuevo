@@ -126,28 +126,26 @@
           <h2>🎉FELICITACIONES POR APROVECHAR EL DCTO! 🎉</h2>
         </div>
 
-        <!-- Variant Cards with connector line -->
+        <!-- Variant Cards + Pricing connected -->
         <div class="rn-connected-section" id="rn-connected-section">
           <div class="rn-connected-content">
             <div class="rn-variants" id="rn-variants"></div>
+            <div class="rn-pricing" id="rn-pricing">
+              <div class="rn-pricing-row">
+                <span>Subtotal</span>
+                <span id="rn-subtotal">$0</span>
+              </div>
+              <div class="rn-pricing-row">
+                <span>Envio</span>
+                <span class="rn-pricing-free">Gratis</span>
+              </div>
+              <div class="rn-pricing-row rn-total">
+                <span>Total</span>
+                <span id="rn-total">$0</span>
+              </div>
+            </div>
           </div>
           <div class="rn-connected-line" id="rn-connected-line"></div>
-        </div>
-
-        <!-- Pricing -->
-        <div class="rn-pricing" id="rn-pricing">
-          <div class="rn-pricing-row">
-            <span>Subtotal</span>
-            <span id="rn-subtotal">$0</span>
-          </div>
-          <div class="rn-pricing-row">
-            <span>Envio</span>
-            <span class="rn-pricing-free">Gratis</span>
-          </div>
-          <div class="rn-pricing-row rn-total">
-            <span>Total</span>
-            <span id="rn-total">$0</span>
-          </div>
         </div>
 
         <!-- Form -->
@@ -288,7 +286,7 @@
       const cardRect = activeCard.getBoundingClientRect();
 
       const topOffset = cardRect.top + cardRect.height / 2 - sectionRect.top;
-      const lineHeight = sectionRect.bottom - (cardRect.top + cardRect.height / 2) + 30;
+      const lineHeight = sectionRect.height - topOffset;
 
       line.style.marginTop = topOffset + 'px';
       line.style.height = lineHeight + 'px';
