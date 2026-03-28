@@ -100,9 +100,9 @@
 
   // Variant options for the modal
   const VARIANT_OPTIONS = [
-    { key: 1, label: '1 Elixir del Sueno', qty: 1 },
-    { key: 2, label: 'x2 Elixir del Sueno', qty: 2 },
-    { key: 3, label: 'x3 Elixir del Sueno', qty: 3 },
+    { key: 1, label: '1 Elixir del Sueno', qty: 1, image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087' },
+    { key: 2, label: 'x2 Elixir del Sueno', qty: 2, image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_21_30575912-a33d-49a2-bf0b-30fe508eca1f.jpg?v=1774568076' },
+    { key: 3, label: 'x3 Elixir del Sueno', qty: 3, image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_19_7e31291b-2bb9-431e-81a7-d20b858dac5b.jpg?v=1774568076' },
   ];
 
   // Get compare-at prices for savings calculation
@@ -242,8 +242,6 @@
 
     // Get product image from Instant.so
     const activeInstant = document.querySelector('.instant-custom-variant-picker[data-instant-state="active"]');
-    const defaultImg = activeInstant ? (activeInstant.querySelector('img') || {}).src || '' : '';
-
     container.innerHTML = VARIANT_OPTIONS.map(v => {
       const isActive = v.qty === selectedModalVariant;
       const price = BUNDLE_PRICING[v.qty] || 0;
@@ -252,7 +250,7 @@
 
       return `
         <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
-          <img class="rn-variant-img" src="${defaultImg}" alt="${v.label}">
+          <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
           <div class="rn-variant-info">
             <p class="rn-variant-name">${v.label}</p>
             ${savings > 0 ? `<span class="rn-variant-badge">Ahorra ${savings}%</span>` : ''}
@@ -275,7 +273,7 @@
           productId: 'instant-product',
           variantId: 'instant-variant-' + qty,
           title: VARIANT_OPTIONS.find(v => v.qty === qty).label,
-          image: defaultImg,
+          image: VARIANT_OPTIONS.find(v => v.qty === qty).image,
           quantity: qty,
         }];
         renderVariantCards();
