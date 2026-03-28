@@ -769,12 +769,12 @@
 }
 
 .rn-pricing-row.rn-total {
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--rn-text);
   padding-top: 3px;
   margin-top: 3px;
-  border-top: 1px solid var(--rn-border);
+  border-top: 2px solid var(--rn-primary);
 }
 
 .rn-pricing-free {
@@ -794,7 +794,7 @@
 }
 
 .rn-pricing-compact .rn-pricing-row.rn-total {
-  font-size: 15px;
+  font-size: 17px;
   padding-top: 3px;
   margin-top: 3px;
 }
