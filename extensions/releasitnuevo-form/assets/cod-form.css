@@ -39,8 +39,8 @@
 /* Modal wrapper for overflow visible */
 .rn-modal-wrapper {
   position: relative;
-  width: 95%;
-  max-width: 95%;
+  width: 90vw;
+  max-width: 90vw;
 }
 
 /* Modal */
