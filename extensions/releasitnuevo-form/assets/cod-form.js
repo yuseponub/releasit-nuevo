@@ -98,6 +98,19 @@
     renderCart();
   }
 
+  // Variant options for the modal
+  const VARIANT_OPTIONS = [
+    { key: 1, label: '1 ELIXIR DEL SUENO', qty: 1 },
+    { key: 2, label: 'x2 ELIXIR DEL SUENO con un 50% de descuento!', qty: 2 },
+    { key: 3, label: 'x3 ELIXIR DEL SUENO con un 58% de descuento!', qty: 3 },
+  ];
+
+  // Get compare-at prices for savings calculation
+  const COMPARE_PRICES = { 1: 110000, 2: 220000, 3: 330000 };
+
+  // Selected variant in modal
+  let selectedModalVariant = 1;
+
   // Build the modal HTML
   function buildModal() {
     const overlay = document.createElement('div');
@@ -106,29 +119,13 @@
 
     overlay.innerHTML = `
       <div class="rn-modal" id="rn-modal">
-        <button class="rn-modal-close" id="rn-close" aria-label="Cerrar">&times;</button>
-
         <div class="rn-header">
-          <h2>Tu Pedido - Pago Contra Entrega</h2>
-          <p>Envio gratis a toda Colombia</p>
+          <h2>FELICITACIONES POR APROVECHAR EL DCTO!</h2>
+          <button class="rn-modal-close" id="rn-close" aria-label="Cerrar">&times;</button>
         </div>
 
-        <!-- Mini Cart -->
-        <div class="rn-cart" id="rn-cart-section">
-          <div id="rn-cart-items"></div>
-        </div>
-
-        <!-- Cross-sell inside modal -->
-        <div class="rn-crosssell" id="rn-crosssell" style="display:none;">
-          <p class="rn-crosssell-title">Complementa tu pedido:</p>
-          <div class="rn-crosssell-items" id="rn-crosssell-items"></div>
-        </div>
-
-        <!-- Savings banner -->
-        <div class="rn-savings" id="rn-savings" style="display:none;">
-          <span class="rn-savings-icon">🏷️</span>
-          <span class="rn-savings-text" id="rn-savings-text"></span>
-        </div>
+        <!-- Variant Cards -->
+        <div class="rn-variants" id="rn-variants"></div>
 
         <!-- Pricing -->
         <div class="rn-pricing" id="rn-pricing">
@@ -138,7 +135,7 @@
           </div>
           <div class="rn-pricing-row">
             <span>Envio</span>
-            <span class="rn-pricing-free">GRATIS</span>
+            <span class="rn-pricing-free">Gratis</span>
           </div>
           <div class="rn-pricing-row rn-total">
             <span>Total</span>
@@ -146,30 +143,38 @@
           </div>
         </div>
 
+        <!-- Shipping method -->
+        <div class="rn-shipping-method">
+          <p class="rn-form-title">Metodo de envio</p>
+          <div class="rn-shipping-option">
+            <span class="rn-shipping-dot"></span>
+            <span>Envio gratis</span>
+            <span class="rn-shipping-price">Gratis</span>
+          </div>
+        </div>
+
         <!-- Form -->
         <div class="rn-form" id="rn-form-section">
-          <p class="rn-form-title">Datos de envio</p>
+          <p class="rn-form-title">Llene los siguientes datos para envio contraentrega:</p>
 
-          <div class="rn-form-row">
-            <div class="rn-form-group">
-              <label class="rn-form-label">Nombre <span class="rn-required">*</span></label>
-              <input type="text" class="rn-form-input" id="rn-firstName" placeholder="Tu nombre" required>
-            </div>
-            <div class="rn-form-group">
-              <label class="rn-form-label">Apellido <span class="rn-required">*</span></label>
-              <input type="text" class="rn-form-input" id="rn-lastName" placeholder="Tu apellido" required>
-            </div>
+          <div class="rn-form-group">
+            <label class="rn-form-label">Nombre <span class="rn-required">*</span></label>
+            <input type="text" class="rn-form-input" id="rn-firstName" placeholder="Nombre" required>
           </div>
 
-          <div class="rn-form-row">
-            <div class="rn-form-group">
-              <label class="rn-form-label">Telefono <span class="rn-required">*</span></label>
-              <input type="tel" class="rn-form-input" id="rn-phone" placeholder="300 123 4567" required>
-            </div>
-            <div class="rn-form-group">
-              <label class="rn-form-label">Confirmar telefono</label>
-              <input type="tel" class="rn-form-input" id="rn-phoneConfirm" placeholder="300 123 4567">
-            </div>
+          <div class="rn-form-group">
+            <label class="rn-form-label">Apellido <span class="rn-required">*</span></label>
+            <input type="text" class="rn-form-input" id="rn-lastName" placeholder="Apellido" required>
+          </div>
+
+          <div class="rn-form-group">
+            <label class="rn-form-label">Telefono <span class="rn-required">*</span></label>
+            <input type="tel" class="rn-form-input" id="rn-phone" placeholder="300 123 4567" required>
+          </div>
+
+          <div class="rn-form-group">
+            <label class="rn-form-label">Confirmar telefono</label>
+            <input type="tel" class="rn-form-input" id="rn-phoneConfirm" placeholder="300 123 4567">
           </div>
 
           <div class="rn-form-group">
@@ -182,18 +187,17 @@
             <input type="text" class="rn-form-input" id="rn-neighborhood" placeholder="Nombre del barrio">
           </div>
 
-          <div class="rn-form-row">
-            <div class="rn-form-group">
-              <label class="rn-form-label">Departamento <span class="rn-required">*</span></label>
-              <select class="rn-form-select" id="rn-department" required>
-                <option value="">Seleccionar...</option>
-                ${DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('')}
-              </select>
-            </div>
-            <div class="rn-form-group">
-              <label class="rn-form-label">Ciudad <span class="rn-required">*</span></label>
-              <input type="text" class="rn-form-input" id="rn-city" placeholder="Ciudad" required>
-            </div>
+          <div class="rn-form-group">
+            <label class="rn-form-label">Departamento <span class="rn-required">*</span></label>
+            <select class="rn-form-select" id="rn-department" required>
+              <option value="">Seleccionar...</option>
+              ${DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('')}
+            </select>
+          </div>
+
+          <div class="rn-form-group">
+            <label class="rn-form-label">Ciudad <span class="rn-required">*</span></label>
+            <input type="text" class="rn-form-input" id="rn-city" placeholder="Ciudad" required>
           </div>
 
           <div class="rn-form-group">
@@ -216,7 +220,7 @@
         <!-- Success View -->
         <div class="rn-success-view" id="rn-success" style="display:none;">
           <div class="rn-success-icon">✅</div>
-          <h3 class="rn-success-title">¡Pedido Confirmado!</h3>
+          <h3 class="rn-success-title">Pedido Confirmado!</h3>
           <p class="rn-success-msg">Tu pedido ha sido registrado exitosamente.</p>
           <p class="rn-success-msg">Recibiras una confirmacion por WhatsApp.</p>
           <p class="rn-success-order" id="rn-order-name"></p>
@@ -226,6 +230,66 @@
 
     document.body.appendChild(overlay);
     bindModalEvents();
+  }
+
+  // Render variant cards in modal
+  function renderVariantCards() {
+    const container = document.getElementById('rn-variants');
+    if (!container) return;
+
+    // Get product image from Instant.so
+    const activeInstant = document.querySelector('.instant-custom-variant-picker[data-instant-state="active"]');
+    const defaultImg = activeInstant ? (activeInstant.querySelector('img') || {}).src || '' : '';
+
+    container.innerHTML = VARIANT_OPTIONS.map(v => {
+      const isActive = v.qty === selectedModalVariant;
+      const price = BUNDLE_PRICING[v.qty] || 0;
+      const comparePrice = COMPARE_PRICES[v.qty] || 0;
+      const savings = comparePrice > price ? Math.round((1 - price / comparePrice) * 100) : 0;
+
+      return `
+        <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
+          <img class="rn-variant-img" src="${defaultImg}" alt="${v.label}">
+          <div class="rn-variant-info">
+            <p class="rn-variant-name">${v.label}</p>
+            ${savings > 0 ? `<span class="rn-variant-badge">Ahorra ${savings}%</span>` : ''}
+          </div>
+          <div class="rn-variant-prices">
+            ${comparePrice > price ? `<span class="rn-variant-compare">${formatCOP(comparePrice)}</span>` : ''}
+            <span class="rn-variant-price">${formatCOP(price)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Bind click events on variant cards
+    container.querySelectorAll('.rn-variant-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const qty = parseInt(card.dataset.variantQty);
+        selectedModalVariant = qty;
+        // Update cart
+        cart = [{
+          productId: 'instant-product',
+          variantId: 'instant-variant-' + qty,
+          title: VARIANT_OPTIONS.find(v => v.qty === qty).label,
+          image: defaultImg,
+          quantity: qty,
+        }];
+        renderVariantCards();
+        updatePricing();
+      });
+    });
+
+    updatePricing();
+  }
+
+  // Update pricing display
+  function updatePricing() {
+    const price = BUNDLE_PRICING[selectedModalVariant] || 0;
+    const subtotalEl = document.getElementById('rn-subtotal');
+    const totalEl = document.getElementById('rn-total');
+    if (subtotalEl) subtotalEl.textContent = formatCOP(price);
+    if (totalEl) totalEl.textContent = formatCOP(price);
   }
 
   // Render cart items
@@ -351,36 +415,29 @@
 
   // Open modal
   function openModal(product) {
-    // Try to detect Instant.so variant first
+    // Detect Instant.so variant to set initial selection
     const instantVariant = getInstantVariant();
-    if (instantVariant && cart.length === 0) {
-      // Clear cart and add based on Instant.so selection
-      cart = [];
-      const productTitle = instantVariant.title;
-      const image = instantVariant.image;
-
-      // Add items based on selected quantity
-      cart.push({
-        productId: 'instant-product',
-        variantId: 'instant-variant-' + instantVariant.qty,
-        title: (instantVariant.variantTitle ? instantVariant.variantTitle + ' ' : '') + productTitle,
-        image: image,
-        quantity: instantVariant.qty,
-      });
-
-      // Override bundle pricing with the actual Instant.so price
+    if (instantVariant) {
+      selectedModalVariant = instantVariant.qty;
       if (instantVariant.price > 0) {
         BUNDLE_PRICING[instantVariant.qty] = instantVariant.price;
       }
-    } else if (product) {
-      addToCart(product);
     }
+
+    // Update cart based on selected variant
+    cart = [{
+      productId: 'instant-product',
+      variantId: 'instant-variant-' + selectedModalVariant,
+      title: (VARIANT_OPTIONS.find(v => v.qty === selectedModalVariant) || {}).label || 'Producto',
+      image: '',
+      quantity: selectedModalVariant,
+    }];
 
     const overlay = document.getElementById('rn-overlay');
     if (overlay) {
       overlay.classList.add('rn-active');
       document.body.style.overflow = 'hidden';
-      renderCart();
+      renderVariantCards();
     }
   }
 
