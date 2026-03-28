@@ -36,18 +36,23 @@
   display: flex;
 }
 
+/* Modal wrapper for overflow visible */
+.rn-modal-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  margin: 0 16px;
+}
+
 /* Modal */
 .rn-modal {
   background: var(--rn-bg);
   border-radius: var(--rn-radius);
   width: 100%;
-  max-width: 520px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--rn-shadow);
-  position: relative;
   animation: rn-slideUp 0.3s ease;
-  margin: 0 16px;
 }
 
 @keyframes rn-slideUp {
@@ -63,22 +68,22 @@
 
 .rn-modal-close {
   position: absolute;
-  top: -12px;
-  right: -12px;
+  top: -14px;
+  right: -14px;
   background: #EF4444;
   border: 2px solid white;
   font-size: 18px;
   cursor: pointer;
   color: white;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: background 0.2s;
   z-index: 20;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
   line-height: 1;
 }
 
@@ -718,6 +723,9 @@
   .rn-modal {
     max-height: 85vh;
     border-radius: var(--rn-radius);
+  }
+
+  .rn-modal-wrapper {
     margin: 0 12px;
   }
 
