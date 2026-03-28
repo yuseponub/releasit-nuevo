@@ -179,8 +179,12 @@
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.15s;
-  width: 100%;
+  width: calc(100% - 5px);
   box-sizing: border-box;
+}
+
+.rn-variant-card.rn-variant-active {
+  width: 100%;
 }
 
 .rn-variant-card:hover {
