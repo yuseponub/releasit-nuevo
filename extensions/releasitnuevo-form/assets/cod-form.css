@@ -534,7 +534,7 @@
 
 .rn-variant-badge {
   display: inline-block;
-  background: var(--rn-success);
+  background: #2DD264;
   color: white;
   font-size: 10px;
   font-weight: 700;
