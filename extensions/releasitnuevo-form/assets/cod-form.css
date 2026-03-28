@@ -847,7 +847,9 @@
 
 /* Form */
 .rn-form {
-  padding: 6px 10px 16px;
+  padding: 10px 10px 16px;
+  border-top: 2px solid var(--rn-border);
+  margin-top: 6px;
 }
 
 .rn-form-title {
