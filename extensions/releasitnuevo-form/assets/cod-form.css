@@ -516,6 +516,11 @@
   min-width: 0;
 }
 
+.rn-variant-qty {
+  font-size: 15px;
+  font-weight: 800;
+}
+
 .rn-variant-name {
   font-size: 12px;
   font-weight: 600;

@@ -101,9 +101,9 @@
 
   // Variant options for the modal
   const VARIANT_OPTIONS = [
-    { key: 1, label: 'X1 ELIXIR DEL SUEÑO', qty: 1, image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28_200x.jpg?v=1774672087' },
-    { key: 2, label: 'X2 ELIXIR DEL SUEÑO', qty: 2, image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_21_30575912-a33d-49a2-bf0b-30fe508eca1f_200x.jpg?v=1774568076' },
-    { key: 3, label: 'X3 ELIXIR DEL SUEÑO', qty: 3, image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_19_7e31291b-2bb9-431e-81a7-d20b858dac5b_200x.jpg?v=1774568076' },
+    { key: 1, qty: 1, qtyLabel: 'X1', label: 'ELIXIR DEL SUEÑO', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28_200x.jpg?v=1774672087' },
+    { key: 2, qty: 2, qtyLabel: 'X2', label: 'ELIXIR DEL SUEÑO', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_21_30575912-a33d-49a2-bf0b-30fe508eca1f_200x.jpg?v=1774568076' },
+    { key: 3, qty: 3, qtyLabel: 'X3', label: 'ELIXIR DEL SUEÑO', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_19_7e31291b-2bb9-431e-81a7-d20b858dac5b_200x.jpg?v=1774568076' },
   ];
 
   // Get compare-at prices for savings calculation
@@ -292,7 +292,7 @@
           <div class="rn-variant-main ${hasExtras ? 'rn-variant-main-compact' : ''}">
             <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
             <div class="rn-variant-info">
-              <p class="rn-variant-name">${v.label}${hasExtras && savings > 0 ? ` <span class="rn-variant-badge rn-variant-badge-inline">Ahorra ${savings}%</span>` : ''}</p>
+              <p class="rn-variant-name"><span class="rn-variant-qty">${v.qtyLabel}</span> ${v.label}${hasExtras && savings > 0 ? ` <span class="rn-variant-badge rn-variant-badge-inline">Ahorra ${savings}%</span>` : ''}</p>
               ${!hasExtras && savings > 0 ? `<span class="rn-variant-badge">Ahorra ${savings}%</span>` : ''}
             </div>
             <div class="rn-variant-prices">
@@ -313,7 +313,7 @@
         cart = [{
           productId: 'instant-product',
           variantId: 'instant-variant-' + qty,
-          title: VARIANT_OPTIONS.find(v => v.qty === qty).label,
+          title: VARIANT_OPTIONS.find(v => v.qty === qty).qtyLabel + ' ' + VARIANT_OPTIONS.find(v => v.qty === qty).label,
           image: VARIANT_OPTIONS.find(v => v.qty === qty).image,
           quantity: qty,
         }];
@@ -539,7 +539,7 @@
     cart = [{
       productId: 'instant-product',
       variantId: 'instant-variant-' + selectedModalVariant,
-      title: (VARIANT_OPTIONS.find(v => v.qty === selectedModalVariant) || {}).label || 'Producto',
+      title: ((VARIANT_OPTIONS.find(v => v.qty === selectedModalVariant) || {}).qtyLabel || '') + ' ' + ((VARIANT_OPTIONS.find(v => v.qty === selectedModalVariant) || {}).label || 'Producto'),
       image: '',
       quantity: selectedModalVariant,
     }];
