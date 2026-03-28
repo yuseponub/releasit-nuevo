@@ -140,6 +140,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  position: relative;
 }
 
 .rn-variant-card {
@@ -163,6 +164,26 @@
   border: 3px solid var(--rn-primary);
   background: #D8EFEC;
   box-shadow: 0 0 0 1px var(--rn-primary);
+  position: relative;
+}
+
+/* Horizontal line from active card */
+.rn-variant-card.rn-variant-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -12px;
+  width: 10px;
+  height: 2px;
+  background: var(--rn-primary);
+}
+
+/* Vertical connector line */
+.rn-line-v {
+  position: absolute;
+  right: 10px;
+  width: 2px;
+  background: var(--rn-primary);
 }
 
 

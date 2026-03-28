@@ -259,7 +259,6 @@
       card.addEventListener('click', () => {
         const qty = parseInt(card.dataset.variantQty);
         selectedModalVariant = qty;
-        // Update cart
         cart = [{
           productId: 'instant-product',
           variantId: 'instant-variant-' + qty,
@@ -273,6 +272,30 @@
     });
 
     updatePricing();
+
+    // Draw vertical connector line
+    setTimeout(() => {
+      const oldLine = container.querySelector('.rn-line-v');
+      if (oldLine) oldLine.remove();
+
+      const activeCard = container.querySelector('.rn-variant-card.rn-variant-active');
+      if (!activeCard) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const cardRect = activeCard.getBoundingClientRect();
+
+      const startY = cardRect.top + cardRect.height / 2 - containerRect.top;
+      const endY = containerRect.height;
+      const height = endY - startY;
+
+      if (height <= 0) return;
+
+      const line = document.createElement('div');
+      line.className = 'rn-line-v';
+      line.style.top = startY + 'px';
+      line.style.height = height + 'px';
+      container.appendChild(line);
+    }, 10);
   }
 
   // Update pricing display
