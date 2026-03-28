@@ -134,9 +134,33 @@
   white-space: nowrap;
 }
 
+/* Connected section: cards + pricing + line */
+.rn-connected-section {
+  display: flex;
+  flex-direction: row;
+  padding-right: 6px;
+}
+
+.rn-connected-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.rn-connected-line {
+  width: 3px;
+  background: var(--rn-primary);
+  margin: 0 10px;
+  border-radius: 2px;
+  display: none;
+}
+
+.rn-connected-line.rn-line-visible {
+  display: block;
+}
+
 /* Variant Cards */
 .rn-variants {
-  padding: 5px 35px 5px 6px;
+  padding: 5px 6px 5px 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
