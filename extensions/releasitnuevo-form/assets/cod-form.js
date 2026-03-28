@@ -155,6 +155,10 @@
           </div>
         </div>
 
+        <div class="rn-upsell-header">
+          <p class="rn-upsell-header-title">POTENCIA TU DESCANSO</p>
+          <p class="rn-upsell-header-sub">$40,000 OFF EN LA COMPRA DE ESTOS PRODUCTOS:</p>
+        </div>
         <div class="rn-upsell-row">
           <div class="rn-upsell-card rn-upsell-dark">
             <p class="rn-upsell-title rn-upsell-title-orange">KSM -66 ASHWAGANDHA</p>

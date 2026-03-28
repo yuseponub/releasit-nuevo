@@ -100,6 +100,28 @@
   background: #4B5563;
 }
 
+/* Upsell header */
+.rn-upsell-header {
+  text-align: center;
+  padding: 6px 6px 2px;
+}
+
+.rn-upsell-header-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--rn-text);
+  text-transform: uppercase;
+}
+
+.rn-upsell-header-sub {
+  margin: 1px 0 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--rn-error);
+  text-transform: uppercase;
+}
+
 /* Upsell cards */
 .rn-upsell-row {
   display: flex;
