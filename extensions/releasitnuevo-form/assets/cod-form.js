@@ -126,11 +126,16 @@
           <h2>🎉FELICITACIONES POR APROVECHAR EL DCTO! 🎉</h2>
         </div>
 
-        <!-- Variant Cards + Pricing wrapped for connector line -->
+        <!-- Variant Cards with connector line -->
         <div class="rn-connected-section" id="rn-connected-section">
           <div class="rn-connected-content">
             <div class="rn-variants" id="rn-variants"></div>
-            <div class="rn-pricing" id="rn-pricing">
+          </div>
+          <div class="rn-connected-line" id="rn-connected-line"></div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="rn-pricing" id="rn-pricing">
           <div class="rn-pricing-row">
             <span>Subtotal</span>
             <span id="rn-subtotal">$0</span>
@@ -143,9 +148,6 @@
             <span>Total</span>
             <span id="rn-total">$0</span>
           </div>
-            </div>
-          </div>
-          <div class="rn-connected-line" id="rn-connected-line"></div>
         </div>
 
         <!-- Form -->
@@ -275,20 +277,18 @@
 
     updatePricing();
 
-    // Show connector line from active card to top of pricing
+    // Show connector line from active card to bottom of variants section
     setTimeout(() => {
       const line = document.getElementById('rn-connected-line');
       const activeCard = document.querySelector('.rn-variant-card.rn-variant-active');
-      const pricing = document.getElementById('rn-pricing');
       const section = document.getElementById('rn-connected-section');
-      if (!line || !activeCard || !pricing || !section) return;
+      if (!line || !activeCard || !section) return;
 
       const sectionRect = section.getBoundingClientRect();
       const cardRect = activeCard.getBoundingClientRect();
-      const pricingRect = pricing.getBoundingClientRect();
 
       const topOffset = cardRect.top + cardRect.height / 2 - sectionRect.top;
-      const lineHeight = pricingRect.top - (cardRect.top + cardRect.height / 2);
+      const lineHeight = sectionRect.bottom - (cardRect.top + cardRect.height / 2);
 
       line.style.marginTop = topOffset + 'px';
       line.style.height = lineHeight + 'px';
