@@ -479,7 +479,7 @@
   border: none;
   color: var(--rn-error);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 20px;
   padding: 2px;
   line-height: 1;
   flex-shrink: 0;
