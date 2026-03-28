@@ -119,8 +119,8 @@
 }
 
 .rn-upsell-dark {
-  background: #1A1A2E;
-  border-color: #1A1A2E;
+  background: #FFF1D5;
+  border-color: #AE3B04;
 }
 
 .rn-upsell-light {
@@ -160,7 +160,7 @@
 }
 
 .rn-upsell-dark .rn-upsell-benefits {
-  color: #ccc;
+  color: #666;
 }
 
 .rn-upsell-img {
@@ -208,7 +208,7 @@
 }
 
 .rn-upsell-dark .rn-upsell-price {
-  color: #aaa;
+  color: #888;
 }
 
 .rn-upsell-price strong {
@@ -216,7 +216,7 @@
 }
 
 .rn-upsell-dark .rn-upsell-price strong {
-  color: #fff;
+  color: var(--rn-text);
 }
 
 /* Banner */
