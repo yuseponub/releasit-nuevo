@@ -188,6 +188,18 @@
   border: 3px solid var(--rn-primary);
   background: #D8EFEC;
   box-shadow: 0 0 0 1px var(--rn-primary);
+  position: relative;
+}
+
+.rn-variant-card.rn-variant-active::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -10px;
+  width: 10px;
+  height: 3px;
+  background: var(--rn-primary);
+  transform: translateY(-50%);
 }
 
 
