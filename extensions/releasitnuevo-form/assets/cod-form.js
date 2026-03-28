@@ -288,8 +288,8 @@
           <div class="rn-variant-main ${hasExtras ? 'rn-variant-main-compact' : ''}">
             <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
             <div class="rn-variant-info">
-              <p class="rn-variant-name">${v.label}</p>
-              ${savings > 0 ? `<span class="rn-variant-badge">Ahorra ${savings}%</span>` : ''}
+              <p class="rn-variant-name">${v.label}${hasExtras && savings > 0 ? ` <span class="rn-variant-badge rn-variant-badge-inline">Ahorra ${savings}%</span>` : ''}</p>
+              ${!hasExtras && savings > 0 ? `<span class="rn-variant-badge">Ahorra ${savings}%</span>` : ''}
             </div>
             <div class="rn-variant-prices">
               ${comparePrice > price ? `<span class="rn-variant-compare">${formatCOP(comparePrice)}</span>` : ''}
