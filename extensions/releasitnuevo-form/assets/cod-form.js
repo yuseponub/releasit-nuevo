@@ -150,7 +150,7 @@
             <span class="rn-pricing-free">Gratis</span>
           </div>
           <div class="rn-pricing-row rn-total">
-            <span>Total</span>
+            <span id="rn-total-label">Total</span>
             <span id="rn-total">$0</span>
           </div>
         </div>
@@ -278,7 +278,7 @@
           <div class="rn-extra-item" style="background:${ep.bg || 'transparent'};">
             <img class="rn-extra-img" src="${ep.image}" alt="${ep.title}">
             <div class="rn-extra-info">
-              <p class="rn-extra-name">+ ${ep.title} ${ep.badge ? `<span class="rn-extra-badge">${ep.badge}</span>` : ''}</p>
+              <p class="rn-extra-name">+ 1X ${ep.title} ${ep.badge ? `<span class="rn-extra-badge">${ep.badge}</span>` : ''}</p>
             </div>
             <div class="rn-extra-prices">${ep.comparePrice ? `<span class="rn-extra-compare">${formatCOP(ep.comparePrice)}</span>` : ''}<span class="rn-extra-price">${formatCOP(ep.price)}</span></div>
             <button class="rn-extra-remove" data-extra-id="${ep.id}">&times;</button>
@@ -377,6 +377,12 @@
 
     if (subtotalEl) subtotalEl.textContent = formatCOP(subtotal);
     if (totalEl) totalEl.textContent = formatCOP(total);
+
+    const totalLabel = document.getElementById('rn-total-label');
+    if (totalLabel) {
+      const totalProducts = selectedModalVariant + extraProducts.length;
+      totalLabel.textContent = `TOTAL (${totalProducts} Producto${totalProducts > 1 ? 's' : ''})`;
+    }
 
     if (discountRow && discountEl) {
       if (totalDiscount > 0) {
