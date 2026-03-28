@@ -134,11 +134,12 @@
   white-space: nowrap;
 }
 
-/* Connected section: cards + pricing + line */
+/* Connected section: cards + line */
 .rn-connected-section {
   display: flex;
   flex-direction: row;
   padding-right: 6px;
+  margin-bottom: 0;
 }
 
 .rn-connected-content {
@@ -160,7 +161,7 @@
 
 /* Variant Cards */
 .rn-variants {
-  padding: 5px 6px 5px 6px;
+  padding: 5px 0 0 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -457,7 +458,7 @@
 /* Pricing summary */
 .rn-pricing {
   background: var(--rn-bg-gray);
-  margin: 6px 0 6px 6px;
+  margin: 0 6px 6px 6px;
   padding: 8px 12px;
   border-radius: 6px;
   border: 2px solid var(--rn-primary);
