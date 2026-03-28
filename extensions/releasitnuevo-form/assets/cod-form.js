@@ -150,6 +150,8 @@
           </div>
         </div>
 
+        <img class="rn-trust-badge" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Texto_del_parrafo_13.jpg?v=1774714594" alt="Trust badges">
+
         <!-- Form -->
         <div class="rn-form" id="rn-form-section">
           <p class="rn-form-title">Llene los siguientes datos para envio contraentrega:</p>
