@@ -878,10 +878,42 @@
 
 .rn-form-label {
   display: block;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--rn-text);
   margin-bottom: 4px;
+}
+
+.rn-input-wrap {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--rn-border);
+  border-radius: var(--rn-radius-sm);
+  background: var(--rn-bg);
+  overflow: hidden;
+}
+
+.rn-input-wrap:focus-within {
+  border-color: var(--rn-primary);
+  box-shadow: 0 0 0 3px rgba(45, 155, 131, 0.1);
+}
+
+.rn-input-icon {
+  padding: 0 8px 0 10px;
+  font-size: 16px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.rn-input-wrap .rn-form-input {
+  border: none;
+  box-shadow: none;
+  padding-left: 0;
+}
+
+.rn-input-wrap .rn-form-input:focus {
+  border: none;
+  box-shadow: none;
 }
 
 .rn-form-label .rn-required {

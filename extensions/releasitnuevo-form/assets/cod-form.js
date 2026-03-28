@@ -188,50 +188,50 @@
 
           <div class="rn-form-group">
             <label class="rn-form-label">Nombre <span class="rn-required">*</span></label>
-            <input type="text" class="rn-form-input" id="rn-firstName" placeholder="Nombre" required>
+            <div class="rn-input-wrap"><span class="rn-input-icon">👤</span><input type="text" class="rn-form-input" id="rn-firstName" placeholder="Nombre" required></div>
           </div>
 
           <div class="rn-form-group">
             <label class="rn-form-label">Apellido <span class="rn-required">*</span></label>
-            <input type="text" class="rn-form-input" id="rn-lastName" placeholder="Apellido" required>
+            <div class="rn-input-wrap"><span class="rn-input-icon">👤</span><input type="text" class="rn-form-input" id="rn-lastName" placeholder="Apellido" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Telefono <span class="rn-required">*</span></label>
-            <input type="tel" class="rn-form-input" id="rn-phone" placeholder="300 123 4567" required>
+            <label class="rn-form-label">Teléfono <span class="rn-required">*</span></label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📞</span><input type="tel" class="rn-form-input" id="rn-phone" placeholder="Número de teléfono" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Confirmar telefono</label>
-            <input type="tel" class="rn-form-input" id="rn-phoneConfirm" placeholder="300 123 4567">
+            <label class="rn-form-label">Confirma tu teléfono</label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📞</span><input type="tel" class="rn-form-input" id="rn-phoneConfirm" placeholder="Confirma tu número"></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Direccion completa <span class="rn-required">*</span></label>
-            <input type="text" class="rn-form-input" id="rn-address" placeholder="Calle, carrera, numero, apto/casa" required>
+            <label class="rn-form-label">Dirección Completa <span class="rn-required">*</span></label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-address" placeholder="Dirección Completa" required></div>
           </div>
 
           <div class="rn-form-group">
             <label class="rn-form-label">Barrio</label>
-            <input type="text" class="rn-form-input" id="rn-neighborhood" placeholder="Nombre del barrio">
+            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-neighborhood" placeholder="Agrega el nombre de tu barrio"></div>
           </div>
 
           <div class="rn-form-group">
             <label class="rn-form-label">Departamento <span class="rn-required">*</span></label>
             <select class="rn-form-select" id="rn-department" required>
-              <option value="">Seleccionar...</option>
+              <option value="">Elige tu departamento</option>
               ${DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('')}
             </select>
           </div>
 
           <div class="rn-form-group">
             <label class="rn-form-label">Ciudad <span class="rn-required">*</span></label>
-            <input type="text" class="rn-form-input" id="rn-city" placeholder="Ciudad" required>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-city" placeholder="Nombre ciudad/pueblo" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Correo electronico</label>
-            <input type="email" class="rn-form-input" id="rn-email" placeholder="correo@ejemplo.com">
+            <label class="rn-form-label">Correo electrónico</label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">✉️</span><input type="email" class="rn-form-input" id="rn-email" placeholder="correo@ejemplo.com"></div>
           </div>
         </div>
 
