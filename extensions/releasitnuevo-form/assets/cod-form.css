@@ -68,27 +68,28 @@
 
 .rn-modal-close {
   position: absolute;
-  top: -14px;
-  right: -14px;
-  background: #EF4444;
+  top: -10px;
+  right: -10px;
+  background: #6B7280;
   border: 2px solid white;
-  font-size: 18px;
+  font-size: 14px;
   cursor: pointer;
   color: white;
-  width: 30px;
-  height: 30px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   transition: background 0.2s;
   z-index: 20;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   line-height: 1;
+  padding: 0;
 }
 
 .rn-modal-close:hover {
-  background: #DC2626;
+  background: #4B5563;
 }
 
 /* Banner */
