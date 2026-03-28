@@ -136,11 +136,10 @@
 
 /* Variant Cards */
 .rn-variants {
-  padding: 5px 21px 5px 6px;
+  padding: 5px 21px 0 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  position: relative;
 }
 
 .rn-variant-card {
@@ -178,13 +177,17 @@
   background: var(--rn-primary);
 }
 
-/* Vertical connector line */
-.rn-line-v {
-  position: absolute;
-  right: 16px;
-  width: 3px;
-  background: red;
-  z-index: 10;
+/* Cards below active get a right border as connector */
+.rn-variant-card.rn-below-active {
+  border-right: 3px solid var(--rn-primary);
+}
+
+/* Gap filler between cards for continuous line */
+.rn-gap-fill {
+  border-right: 3px solid var(--rn-primary);
+  height: 4px;
+  margin-top: -4px;
+  margin-bottom: -4px;
 }
 
 

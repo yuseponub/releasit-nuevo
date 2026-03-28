@@ -238,8 +238,14 @@
       const comparePrice = COMPARE_PRICES[v.qty] || 0;
       const savings = comparePrice > price ? Math.round((1 - price / comparePrice) * 100) : 0;
 
-      let html = `
-        <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
+      const isBelowActive = v.qty > selectedModalVariant;
+      const needsGapFill = isBelowActive || isActive;
+      let html = '';
+      if (isBelowActive) {
+        html += '<div class="rn-gap-fill"></div>';
+      }
+      html += `
+        <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''} ${isBelowActive ? 'rn-below-active' : ''}" data-variant-qty="${v.qty}">
           <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
           <div class="rn-variant-info">
             <p class="rn-variant-name">${v.label}</p>
@@ -253,6 +259,12 @@
       `;
       return html;
     }).join('');
+
+    // Add gap fill after last card to reach pricing
+    const hasCardsBelow = VARIANT_OPTIONS.some(v => v.qty > selectedModalVariant);
+    if (hasCardsBelow) {
+      container.innerHTML += '<div class="rn-gap-fill" style="height:10px;"></div>';
+    }
 
     // Bind click events on variant cards
     container.querySelectorAll('.rn-variant-card').forEach(card => {
@@ -272,30 +284,6 @@
     });
 
     updatePricing();
-
-    // Draw vertical connector line
-    setTimeout(() => {
-      const oldLine = container.querySelector('.rn-line-v');
-      if (oldLine) oldLine.remove();
-
-      const activeCard = container.querySelector('.rn-variant-card.rn-variant-active');
-      if (!activeCard) return;
-
-      const containerRect = container.getBoundingClientRect();
-      const cardRect = activeCard.getBoundingClientRect();
-
-      const startY = cardRect.top + cardRect.height / 2 - containerRect.top;
-      const endY = containerRect.height;
-      const height = endY - startY;
-
-      if (height <= 0) return;
-
-      const line = document.createElement('div');
-      line.className = 'rn-line-v';
-      line.style.top = startY + 'px';
-      line.style.height = height + 'px';
-      container.appendChild(line);
-    }, 10);
   }
 
   // Update pricing display
