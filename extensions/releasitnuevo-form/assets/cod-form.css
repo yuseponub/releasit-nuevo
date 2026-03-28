@@ -117,17 +117,18 @@
   z-index: 10;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=League+Gothic&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@600&display=swap');
 
 .rn-header h2 {
   margin: 0;
-  font-size: 18px;
-  font-weight: 400;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--rn-text);
   flex: 1;
-  font-family: 'League Gothic', sans-serif;
+  font-family: 'Oswald', sans-serif;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.3px;
+  white-space: nowrap;
 }
 
 /* Variant Cards */
