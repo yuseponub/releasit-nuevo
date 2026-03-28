@@ -271,7 +271,7 @@
       let extrasHtml = '';
       if (isActive && extraProducts.length > 0) {
         extrasHtml = extraProducts.map(ep => `
-          <div class="rn-extra-item">
+          <div class="rn-extra-item" style="background:${ep.bg || 'transparent'};">
             <img class="rn-extra-img" src="${ep.image}" alt="${ep.title}">
             <div class="rn-extra-info">
               <p class="rn-extra-name">+ ${ep.title}</p>
@@ -554,8 +554,9 @@
           id: 'ashwagandha',
           variantId: 'ashwagandha-1',
           title: 'KSM-66 Ashwagandha',
-          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
+          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221',
           price: 49900,
+          bg: '#FFF1D5',
         });
         renderVariantCards();
         updatePricing();
@@ -568,8 +569,9 @@
           id: 'magnesio-forte',
           variantId: 'magnesio-forte-1',
           title: 'Magnesio Forte',
-          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
+          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235',
           price: 49900,
+          bg: '#FCEAED',
         });
         renderVariantCards();
         updatePricing();
