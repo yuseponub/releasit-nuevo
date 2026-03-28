@@ -119,6 +119,7 @@
 
     overlay.innerHTML = `
       <div class="rn-modal" id="rn-modal">
+        <img class="rn-banner" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/ALIADO_1_CONTRA_TU_INSOMNIO.jpg?v=1774669037" alt="Somnio - Aliado #1 contra tu insomnio">
         <div class="rn-header">
           <h2>FELICITACIONES POR APROVECHAR EL DCTO!</h2>
           <button class="rn-modal-close" id="rn-close" aria-label="Cerrar">&times;</button>

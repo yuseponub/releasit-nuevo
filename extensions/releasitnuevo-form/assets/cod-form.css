@@ -81,6 +81,13 @@
   background: var(--rn-bg-gray);
 }
 
+/* Banner */
+.rn-banner {
+  width: 100%;
+  display: block;
+  border-radius: var(--rn-radius) var(--rn-radius) 0 0;
+}
+
 /* Header */
 .rn-header {
   position: sticky;
