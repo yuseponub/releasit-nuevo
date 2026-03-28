@@ -358,7 +358,8 @@
   box-shadow: 0 0 0 1px var(--rn-primary);
   flex-direction: column;
   align-items: stretch;
-  padding: 2px 2px 1px;
+  padding: 2px 2px 0;
+  gap: 0;
 }
 
 /* Variant card main row - normal size */
@@ -417,8 +418,8 @@
   gap: 8px;
   padding: 3px 6px 3px;
   border-top: 1px dashed var(--rn-primary);
-  margin-top: -1px;
-  border-radius: 3px;
+  margin-top: 0;
+  border-radius: 0;
 }
 
 .rn-extra-img {
