@@ -275,18 +275,23 @@
 
     updatePricing();
 
-    // Show connector line from active card to pricing
+    // Show connector line from active card to top of pricing
     setTimeout(() => {
       const line = document.getElementById('rn-connected-line');
       const activeCard = document.querySelector('.rn-variant-card.rn-variant-active');
+      const pricing = document.getElementById('rn-pricing');
       const section = document.getElementById('rn-connected-section');
-      if (!line || !activeCard || !section) return;
+      if (!line || !activeCard || !pricing || !section) return;
 
       const sectionRect = section.getBoundingClientRect();
       const cardRect = activeCard.getBoundingClientRect();
+      const pricingRect = pricing.getBoundingClientRect();
+
       const topOffset = cardRect.top + cardRect.height / 2 - sectionRect.top;
+      const lineHeight = pricingRect.top - (cardRect.top + cardRect.height / 2);
 
       line.style.marginTop = topOffset + 'px';
+      line.style.height = lineHeight + 'px';
       line.classList.add('rn-line-visible');
     }, 20);
   }

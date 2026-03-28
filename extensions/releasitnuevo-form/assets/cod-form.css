@@ -152,6 +152,7 @@
   margin: 0 10px;
   border-radius: 2px;
   display: none;
+  align-self: flex-start;
 }
 
 .rn-connected-line.rn-line-visible {
