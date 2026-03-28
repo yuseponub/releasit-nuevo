@@ -458,9 +458,9 @@
 /* Pricing summary */
 .rn-pricing {
   background: var(--rn-bg-gray);
-  margin: 0 6px 6px 6px;
+  margin: 0 2px 6px 2px;
   padding: 8px 12px;
-  border-radius: 6px;
+  border-radius: 3px;
   border: 2px solid var(--rn-primary);
 }
 
