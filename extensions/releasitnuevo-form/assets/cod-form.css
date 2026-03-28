@@ -429,8 +429,8 @@
 /* Pricing summary */
 .rn-pricing {
   background: var(--rn-bg-gray);
-  margin: 8px 6px;
-  padding: 10px 14px;
+  margin: 6px 6px;
+  padding: 8px 12px;
   border-radius: 6px;
   border: 1px solid var(--rn-border);
 }
@@ -438,23 +438,26 @@
 .rn-pricing-row {
   display: flex;
   justify-content: space-between;
-  padding: 2px 0;
+  padding: 1px 0;
   font-size: 13px;
-  color: var(--rn-text-light);
+  font-weight: 600;
+  color: var(--rn-text);
+  text-transform: uppercase;
 }
 
 .rn-pricing-row.rn-total {
   font-size: 15px;
   font-weight: 700;
   color: var(--rn-text);
-  padding-top: 4px;
-  margin-top: 4px;
+  padding-top: 3px;
+  margin-top: 3px;
   border-top: 1px solid var(--rn-border);
 }
 
 .rn-pricing-free {
   color: var(--rn-success);
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 14px;
 }
 
 /* Form */

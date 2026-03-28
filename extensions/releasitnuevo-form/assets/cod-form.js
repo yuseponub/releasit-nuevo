@@ -145,16 +145,6 @@
           </div>
         </div>
 
-        <!-- Shipping method -->
-        <div class="rn-shipping-method">
-          <p class="rn-form-title">Metodo de envio</p>
-          <div class="rn-shipping-option">
-            <span class="rn-shipping-dot"></span>
-            <span>Envio gratis</span>
-            <span class="rn-shipping-price">Gratis</span>
-          </div>
-        </div>
-
         <!-- Form -->
         <div class="rn-form" id="rn-form-section">
           <p class="rn-form-title">Llene los siguientes datos para envio contraentrega:</p>
