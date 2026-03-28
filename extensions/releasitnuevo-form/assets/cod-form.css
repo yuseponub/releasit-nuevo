@@ -172,18 +172,19 @@
   content: '';
   position: absolute;
   top: 50%;
-  right: -12px;
-  width: 10px;
-  height: 2px;
+  right: -6px;
+  width: 5px;
+  height: 3px;
   background: var(--rn-primary);
 }
 
 /* Vertical connector line */
 .rn-line-v {
   position: absolute;
-  right: 10px;
-  width: 2px;
-  background: var(--rn-primary);
+  right: 16px;
+  width: 3px;
+  background: red;
+  z-index: 10;
 }
 
 
