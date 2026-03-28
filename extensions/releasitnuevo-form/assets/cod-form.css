@@ -526,6 +526,7 @@
   font-weight: 600;
   color: var(--rn-text);
   margin: 0 0 3px;
+  padding-left: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
