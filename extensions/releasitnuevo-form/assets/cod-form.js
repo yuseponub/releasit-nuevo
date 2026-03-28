@@ -238,7 +238,7 @@
       const comparePrice = COMPARE_PRICES[v.qty] || 0;
       const savings = comparePrice > price ? Math.round((1 - price / comparePrice) * 100) : 0;
 
-      return `
+      let html = `
         <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
           <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
           <div class="rn-variant-info">
@@ -251,7 +251,11 @@
           </div>
         </div>
       `;
+      return html;
     }).join('');
+
+    // Add vertical connector line after all cards
+    container.innerHTML += '<div class="rn-connector-line" style="height:14px;"></div>';
 
     // Bind click events on variant cards
     container.querySelectorAll('.rn-variant-card').forEach(card => {
@@ -276,33 +280,9 @@
     setTimeout(drawConnector, 50);
   }
 
-  // Draw connector vertical line from active variant to pricing
+  // Draw connector vertical line from active variant down to pricing
   function drawConnector() {
-    const old = document.querySelector('.rn-connector-line');
-    if (old) old.remove();
-
-    const activeCard = document.querySelector('.rn-variant-card.rn-variant-active');
-    const pricing = document.getElementById('rn-pricing');
-    const modal = document.getElementById('rn-modal');
-    if (!activeCard || !pricing || !modal) return;
-
-    const modalRect = modal.getBoundingClientRect();
-    const cardRect = activeCard.getBoundingClientRect();
-    const pricingRect = pricing.getBoundingClientRect();
-
-    const startY = cardRect.top + cardRect.height / 2 - modalRect.top + modal.scrollTop;
-    const endY = pricingRect.top - modalRect.top + modal.scrollTop;
-    const lineHeight = endY - startY;
-
-    if (lineHeight <= 0) return;
-
-    const line = document.createElement('div');
-    line.className = 'rn-connector-line';
-    line.style.top = startY + 'px';
-    line.style.height = lineHeight + 'px';
-
-    modal.style.position = 'relative';
-    modal.appendChild(line);
+    // no-op, using CSS only now
   }
 
   // Update pricing display
