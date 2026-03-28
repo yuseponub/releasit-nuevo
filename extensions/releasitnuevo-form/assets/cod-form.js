@@ -28,6 +28,7 @@
 
   // State
   let cart = [];
+  let extraProducts = [];
   let allProducts = [];
   let draftSent = false;
   let draftTimeout = null;
@@ -249,17 +250,35 @@
       const comparePrice = COMPARE_PRICES[v.qty] || 0;
       const savings = comparePrice > price ? Math.round((1 - price / comparePrice) * 100) : 0;
 
+      // Render extras inside active card
+      let extrasHtml = '';
+      if (isActive && extraProducts.length > 0) {
+        extrasHtml = extraProducts.map(ep => `
+          <div class="rn-extra-item">
+            <img class="rn-extra-img" src="${ep.image}" alt="${ep.title}">
+            <div class="rn-extra-info">
+              <p class="rn-extra-name">+ ${ep.title}</p>
+            </div>
+            <div class="rn-extra-price">${formatCOP(ep.price)}</div>
+            <button class="rn-extra-remove" data-extra-id="${ep.id}">&times;</button>
+          </div>
+        `).join('');
+      }
+
       return `
         <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
-          <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
-          <div class="rn-variant-info">
-            <p class="rn-variant-name">${v.label}</p>
-            ${savings > 0 ? `<span class="rn-variant-badge">Ahorra ${savings}%</span>` : ''}
+          <div class="rn-variant-main">
+            <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
+            <div class="rn-variant-info">
+              <p class="rn-variant-name">${v.label}</p>
+              ${savings > 0 ? `<span class="rn-variant-badge">Ahorra ${savings}%</span>` : ''}
+            </div>
+            <div class="rn-variant-prices">
+              ${comparePrice > price ? `<span class="rn-variant-compare">${formatCOP(comparePrice)}</span>` : ''}
+              <span class="rn-variant-price">${formatCOP(price)}</span>
+            </div>
           </div>
-          <div class="rn-variant-prices">
-            ${comparePrice > price ? `<span class="rn-variant-compare">${formatCOP(comparePrice)}</span>` : ''}
-            <span class="rn-variant-price">${formatCOP(price)}</span>
-          </div>
+          ${extrasHtml}
         </div>
       `;
     }).join('');
@@ -276,6 +295,16 @@
           image: VARIANT_OPTIONS.find(v => v.qty === qty).image,
           quantity: qty,
         }];
+        renderVariantCards();
+        updatePricing();
+      });
+    });
+
+    // Bind remove extra buttons
+    container.querySelectorAll('.rn-extra-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        extraProducts = extraProducts.filter(ep => ep.id !== btn.dataset.extraId);
         renderVariantCards();
         updatePricing();
       });
@@ -309,11 +338,13 @@
 
   // Update pricing display
   function updatePricing() {
-    const price = BUNDLE_PRICING[selectedModalVariant] || 0;
+    const basePrice = BUNDLE_PRICING[selectedModalVariant] || 0;
+    const extrasTotal = extraProducts.reduce((sum, ep) => sum + ep.price, 0);
+    const total = basePrice + extrasTotal;
     const subtotalEl = document.getElementById('rn-subtotal');
     const totalEl = document.getElementById('rn-total');
-    if (subtotalEl) subtotalEl.textContent = formatCOP(price);
-    if (totalEl) totalEl.textContent = formatCOP(price);
+    if (subtotalEl) subtotalEl.textContent = formatCOP(total);
+    if (totalEl) totalEl.textContent = formatCOP(total);
   }
 
   // Render cart items
@@ -501,27 +532,31 @@
 
     // Cross-sell add buttons
     document.getElementById('rn-add-ashwagandha').addEventListener('click', () => {
-      addToCart({
-        productId: 'ashwagandha',
-        variantId: 'ashwagandha-1',
-        title: 'KSM-66 Ashwagandha',
-        image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
-        quantity: 1,
-      });
-      renderVariantCards();
-      updatePricing();
+      if (!extraProducts.find(ep => ep.id === 'ashwagandha')) {
+        extraProducts.push({
+          id: 'ashwagandha',
+          variantId: 'ashwagandha-1',
+          title: 'KSM-66 Ashwagandha',
+          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
+          price: 49900,
+        });
+        renderVariantCards();
+        updatePricing();
+      }
     });
 
     document.getElementById('rn-add-magnesio').addEventListener('click', () => {
-      addToCart({
-        productId: 'magnesio-forte',
-        variantId: 'magnesio-forte-1',
-        title: 'Magnesio Forte',
-        image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
-        quantity: 1,
-      });
-      renderVariantCards();
-      updatePricing();
+      if (!extraProducts.find(ep => ep.id === 'magnesio-forte')) {
+        extraProducts.push({
+          id: 'magnesio-forte',
+          variantId: 'magnesio-forte-1',
+          title: 'Magnesio Forte',
+          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28.jpg?v=1774672087',
+          price: 49900,
+        });
+        renderVariantCards();
+        updatePricing();
+      }
     });
 
     // Submit order
