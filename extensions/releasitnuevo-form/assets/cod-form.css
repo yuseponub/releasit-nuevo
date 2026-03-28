@@ -372,8 +372,8 @@
 
 /* When extras are present, main item shrinks to match */
 .rn-variant-main.rn-variant-main-compact {
-  gap: 8px;
-  padding: 5px 6px 4px;
+  gap: 4px;
+  padding: 2px 4px 2px 0;
 }
 
 .rn-variant-main-compact .rn-variant-img {
@@ -384,6 +384,12 @@
 
 .rn-variant-main-compact .rn-variant-name {
   font-size: 11px;
+  margin: 0 0 1px;
+}
+
+.rn-variant-main-compact .rn-variant-badge {
+  font-size: 9px;
+  padding: 1px 5px;
 }
 
 .rn-variant-main-compact .rn-variant-price {
@@ -392,6 +398,14 @@
 
 .rn-variant-main-compact .rn-variant-compare {
   font-size: 10px;
+}
+
+.rn-variant-main-compact .rn-variant-info {
+  gap: 1px;
+}
+
+.rn-variant-main-compact .rn-variant-prices {
+  gap: 0;
 }
 
 /* Extra products inside active card */
