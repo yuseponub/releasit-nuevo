@@ -636,6 +636,22 @@
     document.addEventListener('rn:open-modal', () => {
       openModal();
     });
+
+    // Listen for #rn-open-cod anchor clicks (for Instant.so / custom buttons)
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a[href*="#rn-open-cod"], button[href*="#rn-open-cod"]');
+      if (link) {
+        e.preventDefault();
+        const productData = getProductFromPage();
+        openModal(productData);
+      }
+    });
+
+    // Also check if page loaded with #rn-open-cod hash
+    if (window.location.hash === '#rn-open-cod') {
+      const productData = getProductFromPage();
+      openModal(productData);
+    }
   }
 
   // Wait for DOM ready
