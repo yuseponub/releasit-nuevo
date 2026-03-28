@@ -428,24 +428,27 @@
 
 /* Pricing summary */
 .rn-pricing {
-  padding: 16px 10px;
-  border-top: 1px solid var(--rn-border);
+  background: var(--rn-bg-gray);
+  margin: 8px 6px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--rn-border);
 }
 
 .rn-pricing-row {
   display: flex;
   justify-content: space-between;
-  padding: 4px 0;
-  font-size: 14px;
+  padding: 2px 0;
+  font-size: 13px;
   color: var(--rn-text-light);
 }
 
 .rn-pricing-row.rn-total {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--rn-text);
-  padding-top: 10px;
-  margin-top: 6px;
+  padding-top: 4px;
+  margin-top: 4px;
   border-top: 1px solid var(--rn-border);
 }
 
