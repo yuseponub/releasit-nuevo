@@ -41,6 +41,8 @@
   position: relative;
   width: 95vw;
   max-width: 95vw;
+  height: calc(100vh - 30px);
+  height: calc(100dvh - 30px);
 }
 
 /* Modal */
@@ -48,7 +50,7 @@
   background: var(--rn-bg);
   border-radius: var(--rn-radius) var(--rn-radius) 0 0;
   width: 100%;
-  height: calc(100vh - 30px);
+  height: 100%;
   overflow-y: auto;
   box-shadow: var(--rn-shadow);
   animation: rn-slideUp 0.3s ease;
