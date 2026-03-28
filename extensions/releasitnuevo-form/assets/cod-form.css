@@ -103,7 +103,9 @@
 /* Upsell header */
 .rn-upsell-header {
   text-align: center;
-  padding: 2px 6px 0;
+  padding: 0 6px 0;
+  margin: 0;
+  line-height: 1.2;
 }
 
 .rn-upsell-header-title {
