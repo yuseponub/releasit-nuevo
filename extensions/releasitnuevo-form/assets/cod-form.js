@@ -150,7 +150,7 @@
           </div>
         </div>
 
-        <img class="rn-trust-badge" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Texto_del_parrafo_13.jpg?v=1774714594" alt="Trust badges">
+        <img class="rn-trust-badge" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Texto_del_parrafo_15.jpg?v=1774715984" alt="Trust badges">
 
         <!-- Form -->
         <div class="rn-form" id="rn-form-section">
