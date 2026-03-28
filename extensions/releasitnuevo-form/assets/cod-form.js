@@ -361,13 +361,13 @@
   // Update pricing display
   function updatePricing() {
     const basePrice = BUNDLE_PRICING[selectedModalVariant] || 0;
-    const baseCompare = COMPARE_PRICES[selectedModalVariant] || basePrice;
-    const baseDiscount = baseCompare - basePrice;
+    const baseSubtotal = selectedModalVariant * 89900; // $89,900 per unit
+    const baseDiscount = baseSubtotal - basePrice;
     const extrasCompareTotal = extraProducts.reduce((sum, ep) => sum + (ep.comparePrice || ep.price), 0);
     const extrasActualTotal = extraProducts.reduce((sum, ep) => sum + ep.price, 0);
     const extrasDiscount = extrasCompareTotal - extrasActualTotal;
     const totalDiscount = baseDiscount + extrasDiscount;
-    const subtotal = baseCompare + extrasCompareTotal;
+    const subtotal = baseSubtotal + extrasCompareTotal;
     const total = basePrice + extrasActualTotal;
 
     const subtotalEl = document.getElementById('rn-subtotal');
