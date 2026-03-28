@@ -197,7 +197,7 @@
 .rn-upsell-btn-left {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .rn-upsell-btn-left .rn-upsell-btn-main {
