@@ -361,13 +361,37 @@
   padding: 2px;
 }
 
-/* Variant card main row */
+/* Variant card main row - normal size */
 .rn-variant-main {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   padding-right: 6px;
+}
+
+/* When extras are present, main item shrinks to match */
+.rn-variant-main.rn-variant-main-compact {
+  gap: 8px;
+  padding: 5px 6px 4px;
+}
+
+.rn-variant-main-compact .rn-variant-img {
+  width: 32px;
+  height: 32px;
+  align-self: center;
+}
+
+.rn-variant-main-compact .rn-variant-name {
+  font-size: 11px;
+}
+
+.rn-variant-main-compact .rn-variant-price {
+  font-size: 12px;
+}
+
+.rn-variant-main-compact .rn-variant-compare {
+  font-size: 10px;
 }
 
 /* Extra products inside active card */

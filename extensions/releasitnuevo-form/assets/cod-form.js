@@ -282,9 +282,10 @@
         `).join('');
       }
 
+      const hasExtras = isActive && extraProducts.length > 0;
       return `
         <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
-          <div class="rn-variant-main">
+          <div class="rn-variant-main ${hasExtras ? 'rn-variant-main-compact' : ''}">`;
             <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
             <div class="rn-variant-info">
               <p class="rn-variant-name">${v.label}</p>
