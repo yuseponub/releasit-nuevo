@@ -141,6 +141,10 @@
             <span>Subtotal</span>
             <span id="rn-subtotal">$0</span>
           </div>
+          <div class="rn-pricing-row rn-discount-row" id="rn-discount-row" style="display:none;">
+            <span>Descuentos extra</span>
+            <span class="rn-pricing-discount" id="rn-discount">-$0</span>
+          </div>
           <div class="rn-pricing-row">
             <span>Envio</span>
             <span class="rn-pricing-free">Gratis</span>
@@ -357,12 +361,28 @@
   // Update pricing display
   function updatePricing() {
     const basePrice = BUNDLE_PRICING[selectedModalVariant] || 0;
-    const extrasTotal = extraProducts.reduce((sum, ep) => sum + ep.price, 0);
-    const total = basePrice + extrasTotal;
+    const extrasCompareTotal = extraProducts.reduce((sum, ep) => sum + (ep.comparePrice || ep.price), 0);
+    const extrasActualTotal = extraProducts.reduce((sum, ep) => sum + ep.price, 0);
+    const discount = extrasCompareTotal - extrasActualTotal;
+    const subtotal = basePrice + extrasCompareTotal;
+    const total = basePrice + extrasActualTotal;
+
     const subtotalEl = document.getElementById('rn-subtotal');
     const totalEl = document.getElementById('rn-total');
-    if (subtotalEl) subtotalEl.textContent = formatCOP(total);
+    const discountRow = document.getElementById('rn-discount-row');
+    const discountEl = document.getElementById('rn-discount');
+
+    if (subtotalEl) subtotalEl.textContent = formatCOP(subtotal);
     if (totalEl) totalEl.textContent = formatCOP(total);
+
+    if (discountRow && discountEl) {
+      if (discount > 0) {
+        discountRow.style.display = 'flex';
+        discountEl.textContent = '-' + formatCOP(discount);
+      } else {
+        discountRow.style.display = 'none';
+      }
+    }
   }
 
   // Render cart items

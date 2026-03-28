@@ -783,6 +783,11 @@
   font-size: 14px;
 }
 
+.rn-pricing-discount {
+  color: var(--rn-error);
+  font-weight: 700;
+}
+
 /* Form */
 .rn-form {
   padding: 16px 10px 16px;
