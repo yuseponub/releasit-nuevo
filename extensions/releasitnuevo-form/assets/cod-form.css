@@ -38,12 +38,12 @@
 
 /* Modal wrapper for overflow visible */
 .rn-modal-wrapper {
-  position: absolute;
+  position: fixed;
   top: 30px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 2.5vw;
+  right: 2.5vw;
   bottom: 0;
-  width: 95vw;
+  z-index: 100000;
 }
 
 /* Modal */
