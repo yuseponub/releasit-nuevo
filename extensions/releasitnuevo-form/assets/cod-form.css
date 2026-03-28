@@ -195,11 +195,14 @@
   content: '';
   position: absolute;
   top: 50%;
-  right: -10px;
-  width: 10px;
-  height: 3px;
-  background: var(--rn-primary);
-  transform: translateY(-50%);
+  right: -15px;
+  width: 12px;
+  height: calc(50% + 4px);
+  background: transparent;
+  border-top: 3px solid var(--rn-primary);
+  border-right: 3px solid var(--rn-primary);
+  border-top-right-radius: 10px;
+  box-sizing: border-box;
 }
 
 
