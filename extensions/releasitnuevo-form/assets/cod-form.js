@@ -383,6 +383,15 @@
         discountRow.style.display = 'none';
       }
     }
+
+    const pricing = document.getElementById('rn-pricing');
+    if (pricing) {
+      if (extraProducts.length > 0) {
+        pricing.classList.add('rn-pricing-compact');
+      } else {
+        pricing.classList.remove('rn-pricing-compact');
+      }
+    }
   }
 
   // Render cart items

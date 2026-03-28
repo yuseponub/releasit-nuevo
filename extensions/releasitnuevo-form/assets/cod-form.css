@@ -788,6 +788,17 @@
   font-weight: 700;
 }
 
+.rn-pricing-compact .rn-pricing-row {
+  font-size: 11px;
+  padding: 0;
+}
+
+.rn-pricing-compact .rn-pricing-row.rn-total {
+  font-size: 15px;
+  padding-top: 3px;
+  margin-top: 3px;
+}
+
 /* Form */
 .rn-form {
   padding: 16px 10px 16px;
