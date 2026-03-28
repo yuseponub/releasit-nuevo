@@ -558,7 +558,7 @@
           image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221',
           price: 49900,
           bg: '#FFF1D5',
-          badge: '$30,000 OFF',
+          badge: '$40,000 OFF',
         });
         renderVariantCards();
         updatePricing();
@@ -574,7 +574,7 @@
           image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235',
           price: 49900,
           bg: '#FCEAED',
-          badge: '$30,000 OFF',
+          badge: '$40,000 OFF',
         });
         renderVariantCards();
         updatePricing();
