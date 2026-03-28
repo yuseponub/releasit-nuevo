@@ -138,7 +138,7 @@
 }
 
 .rn-upsell-title {
-  margin: 0 0 1px;
+  margin: -2px 0 2px;
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
@@ -153,14 +153,6 @@
   color: #1A3A4A;
 }
 
-.rn-upsell-title-sub {
-  font-size: 10px;
-  opacity: 0.7;
-}
-
-.rn-upsell-title-small {
-  font-size: 11px;
-}
 
 .rn-upsell-benefits {
   font-size: 10px;
