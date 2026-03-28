@@ -141,8 +141,8 @@
 .rn-variant-card {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 10px;
+  gap: 8px;
+  padding: 2px 8px 2px 2px;
   border: 1.5px solid var(--rn-border);
   border-radius: 4px;
   cursor: pointer;
@@ -161,9 +161,9 @@
 }
 
 .rn-variant-img {
-  width: 45px;
+  width: 50px;
   align-self: stretch;
-  border-radius: 3px;
+  border-radius: 3px 0 0 3px;
   object-fit: cover;
   flex-shrink: 0;
 }
