@@ -353,6 +353,14 @@
   box-sizing: border-box;
 }
 
+.rn-variant-card .rn-variant-img {
+  filter: grayscale(100%);
+}
+
+.rn-variant-card.rn-variant-active .rn-variant-img {
+  filter: grayscale(0%);
+}
+
 .rn-variant-card:hover {
   border-color: var(--rn-primary);
 }
