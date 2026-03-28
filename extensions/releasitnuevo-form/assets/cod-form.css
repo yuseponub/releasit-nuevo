@@ -26,9 +26,9 @@
   background: rgba(0, 0, 0, 0.5);
   z-index: 99999;
   display: none;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 0;
+  padding: 10px 0;
   backdrop-filter: blur(4px);
 }
 
@@ -48,7 +48,7 @@
   background: var(--rn-bg);
   border-radius: var(--rn-radius);
   width: 100%;
-  max-height: 90vh;
+  max-height: 95vh;
   overflow-y: auto;
   box-shadow: var(--rn-shadow);
   animation: rn-slideUp 0.3s ease;
@@ -742,8 +742,8 @@
   }
 
   .rn-overlay {
-    align-items: center;
-    padding: 0;
+    align-items: flex-start;
+    padding: 10px 0;
   }
 
   .rn-form-row {
