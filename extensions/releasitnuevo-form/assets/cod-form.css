@@ -148,11 +148,14 @@
 }
 
 .rn-connected-line {
-  width: 3px;
-  background: var(--rn-primary);
-  margin: 0 1px 0 8px;
-  border-radius: 2px;
+  width: 12px;
+  margin: 0 1px 0 0;
   display: none;
+  background: transparent;
+  border-right: 3px solid var(--rn-primary);
+  border-top: 3px solid var(--rn-primary);
+  border-top-right-radius: 6px;
+  box-sizing: border-box;
 }
 
 .rn-connected-line.rn-line-visible {
@@ -188,21 +191,6 @@
   border: 3px solid var(--rn-primary);
   background: #D8EFEC;
   box-shadow: 0 0 0 1px var(--rn-primary);
-  position: relative;
-}
-
-.rn-variant-card.rn-variant-active::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -12px;
-  width: 9px;
-  height: calc(50% + 4px);
-  background: transparent;
-  border-top: 3px solid var(--rn-primary);
-  border-right: 3px solid var(--rn-primary);
-  border-top-right-radius: 2px;
-  box-sizing: border-box;
 }
 
 
