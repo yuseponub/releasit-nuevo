@@ -153,20 +153,20 @@
 
         <div class="rn-upsell-row">
           <div class="rn-upsell-card rn-upsell-dark">
-            <div class="rn-upsell-top">
-              <p class="rn-upsell-title rn-upsell-title-orange">KSM -66 ASHWAGANDHA</p>
+            <p class="rn-upsell-title rn-upsell-title-orange">KSM -66 ASHWAGANDHA</p>
+            <div class="rn-upsell-body">
+              <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28_200x.jpg?v=1774672087" alt="Ashwagandha">
               <div class="rn-upsell-benefits">- Estrés<br>+ Calma</div>
             </div>
-            <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28_200x.jpg?v=1774672087" alt="Ashwagandha">
             <button class="rn-upsell-btn rn-upsell-btn-orange" id="rn-add-ashwagandha">+ AGREGAR</button>
             <p class="rn-upsell-price">SOLO POR <strong>$49,900</strong></p>
           </div>
           <div class="rn-upsell-card rn-upsell-light">
-            <div class="rn-upsell-top">
-              <p class="rn-upsell-title rn-upsell-title-blue">MAGNESIO FORTE</p>
+            <p class="rn-upsell-title rn-upsell-title-blue">MAGNESIO FORTE</p>
+            <div class="rn-upsell-body">
+              <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_19_7e31291b-2bb9-431e-81a7-d20b858dac5b_200x.jpg?v=1774568076" alt="Magnesio Forte">
               <div class="rn-upsell-benefits">+ Bisglicinato<br>+ Taurato<br>Relajación total</div>
             </div>
-            <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_19_7e31291b-2bb9-431e-81a7-d20b858dac5b_200x.jpg?v=1774568076" alt="Magnesio Forte">
             <button class="rn-upsell-btn rn-upsell-btn-blue" id="rn-add-magnesio">+ AGREGAR</button>
             <p class="rn-upsell-price">SOLO POR <strong>$49,900</strong></p>
           </div>

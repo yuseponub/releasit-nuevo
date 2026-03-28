@@ -128,7 +128,10 @@
   border-color: #2E7066;
 }
 
-.rn-upsell-top {
+.rn-upsell-body {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   width: 100%;
   margin-bottom: 4px;
 }
@@ -161,11 +164,11 @@
 }
 
 .rn-upsell-img {
-  width: 45px;
-  height: 45px;
+  width: 42px;
+  height: 42px;
   object-fit: cover;
   border-radius: 4px;
-  margin: 4px 0;
+  flex-shrink: 0;
 }
 
 .rn-upsell-btn {
