@@ -188,10 +188,16 @@
   gap: 6px;
 }
 
+.rn-upsell-btn-plus {
+  font-size: 13px;
+  font-weight: 800;
+  margin-right: 2px;
+}
+
 .rn-upsell-btn-left {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .rn-upsell-btn-left .rn-upsell-btn-main {

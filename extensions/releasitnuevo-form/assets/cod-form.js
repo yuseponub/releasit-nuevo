@@ -160,7 +160,7 @@
                 <div class="rn-upsell-benefits">- Estrés<br>+ Calma</div>
               </div>
             </div>
-            <button class="rn-upsell-btn rn-upsell-btn-orange" id="rn-add-ashwagandha"><div class="rn-upsell-btn-left"><span class="rn-upsell-btn-main">+ AGREGA</span><span class="rn-upsell-btn-sub">SOLO POR</span></div><span class="rn-upsell-btn-price">$49,900</span></button>
+            <button class="rn-upsell-btn rn-upsell-btn-orange" id="rn-add-ashwagandha"><span class="rn-upsell-btn-plus">+</span><div class="rn-upsell-btn-left"><span class="rn-upsell-btn-main">AGREGA</span><span class="rn-upsell-btn-sub">SOLO POR</span></div><span class="rn-upsell-btn-price">$49,900</span></button>
           </div>
           <div class="rn-upsell-card rn-upsell-light">
             <p class="rn-upsell-title rn-upsell-title-blue">MAGNESIO FORTE</p>
@@ -170,7 +170,7 @@
                 <div class="rn-upsell-benefits">+ Bisglicinato<br>+ Taurato<br>Relajación total</div>
               </div>
             </div>
-            <button class="rn-upsell-btn rn-upsell-btn-blue" id="rn-add-magnesio"><div class="rn-upsell-btn-left"><span class="rn-upsell-btn-main">+ AGREGA</span><span class="rn-upsell-btn-sub">SOLO POR</span></div><span class="rn-upsell-btn-price">$49,900</span></button>
+            <button class="rn-upsell-btn rn-upsell-btn-blue" id="rn-add-magnesio"><span class="rn-upsell-btn-plus">+</span><div class="rn-upsell-btn-left"><span class="rn-upsell-btn-main">AGREGA</span><span class="rn-upsell-btn-sub">SOLO POR</span></div><span class="rn-upsell-btn-price">$49,900</span></button>
           </div>
         </div>
 
