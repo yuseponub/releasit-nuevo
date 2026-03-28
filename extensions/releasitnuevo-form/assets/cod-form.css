@@ -163,31 +163,26 @@
   border: 3px solid var(--rn-primary);
   background: #D8EFEC;
   box-shadow: 0 0 0 1px var(--rn-primary);
+  position: relative;
 }
 
-/* Connector line from active variant to pricing */
-.rn-connector {
+.rn-variant-card.rn-variant-active::after {
+  content: '';
   position: absolute;
-  right: 13px;
-  pointer-events: none;
-  z-index: 5;
-}
-
-.rn-connector-h {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 8px;
+  top: 50%;
+  right: -15px;
+  width: 12px;
   height: 2px;
   background: var(--rn-primary);
 }
 
-.rn-connector-v {
+.rn-connector-line {
   position: absolute;
-  top: 0;
-  right: 0;
+  right: 13px;
   width: 2px;
   background: var(--rn-primary);
+  pointer-events: none;
+  z-index: 5;
 }
 
 .rn-variant-img {

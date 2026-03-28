@@ -276,39 +276,33 @@
     setTimeout(drawConnector, 50);
   }
 
-  // Draw connector line from active variant to pricing
+  // Draw connector vertical line from active variant to pricing
   function drawConnector() {
-    // Remove old connector
-    const old = document.querySelector('.rn-connector');
+    const old = document.querySelector('.rn-connector-line');
     if (old) old.remove();
 
     const activeCard = document.querySelector('.rn-variant-card.rn-variant-active');
     const pricing = document.getElementById('rn-pricing');
-    const variants = document.getElementById('rn-variants');
-    if (!activeCard || !pricing || !variants) return;
+    const modal = document.getElementById('rn-modal');
+    if (!activeCard || !pricing || !modal) return;
 
-    const variantsRect = variants.getBoundingClientRect();
+    const modalRect = modal.getBoundingClientRect();
     const cardRect = activeCard.getBoundingClientRect();
     const pricingRect = pricing.getBoundingClientRect();
 
-    const startY = cardRect.top + cardRect.height / 2 - variantsRect.top;
-    const endY = pricingRect.top - variantsRect.top;
+    const startY = cardRect.top + cardRect.height / 2 - modalRect.top + modal.scrollTop;
+    const endY = pricingRect.top - modalRect.top + modal.scrollTop;
     const lineHeight = endY - startY;
 
     if (lineHeight <= 0) return;
 
-    const connector = document.createElement('div');
-    connector.className = 'rn-connector';
-    connector.style.top = startY + 'px';
-    connector.style.height = lineHeight + 'px';
+    const line = document.createElement('div');
+    line.className = 'rn-connector-line';
+    line.style.top = startY + 'px';
+    line.style.height = lineHeight + 'px';
 
-    connector.innerHTML = `
-      <div class="rn-connector-h"></div>
-      <div class="rn-connector-v" style="height:${lineHeight}px"></div>
-    `;
-
-    variants.style.position = 'relative';
-    variants.appendChild(connector);
+    modal.style.position = 'relative';
+    modal.appendChild(line);
   }
 
   // Update pricing display
