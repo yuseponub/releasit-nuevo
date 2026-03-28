@@ -189,7 +189,7 @@
 
 .rn-variant-card.rn-variant-active {
   border: 3px solid var(--rn-primary);
-  background: #D8EFEC;
+  background: #E8F5F2;
   box-shadow: 0 0 0 1px var(--rn-primary);
 }
 
