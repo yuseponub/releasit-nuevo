@@ -137,8 +137,8 @@
 }
 
 .rn-upsell-title {
-  margin: 0 0 2px;
-  font-size: 11px;
+  margin: -2px 0 2px;
+  font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: -0.3px;
