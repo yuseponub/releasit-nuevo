@@ -964,23 +964,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 14px 10px;
-  background: var(--rn-primary);
+  padding: 14px 16px;
+  background: #2DD264;
   color: white;
   border: none;
-  border-radius: var(--rn-radius-sm);
-  font-size: 16px;
-  font-weight: 700;
+  border-radius: 12px;
   cursor: pointer;
   transition: background 0.2s;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .rn-btn-primary:hover {
-  background: var(--rn-primary-dark);
+  background: #25B858;
 }
 
 .rn-btn-primary:disabled {
@@ -992,27 +988,48 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  padding: 12px 10px;
-  background: var(--rn-secondary);
+  padding: 14px 16px;
+  background: #43A047;
   color: white;
   border: none;
-  border-radius: var(--rn-radius-sm);
-  font-size: 14px;
-  font-weight: 600;
+  border-radius: 12px;
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .rn-btn-whatsapp:hover {
-  background: var(--rn-secondary-dark);
+  background: #388E3C;
 }
 
-.rn-btn-whatsapp svg {
-  width: 20px;
-  height: 20px;
+.rn-btn-icon {
+  font-size: 24px;
+}
+
+.rn-btn-wa-icon {
+  width: 28px;
+  height: 28px;
   fill: white;
+  flex-shrink: 0;
+}
+
+.rn-btn-text {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+}
+
+.rn-btn-main {
+  font-size: 16px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.rn-btn-sub {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.9;
 }
 
 /* Product page button */
