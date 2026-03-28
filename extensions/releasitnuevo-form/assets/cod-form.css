@@ -436,11 +436,12 @@
 }
 
 .rn-extra-name {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--rn-primary-dark);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--rn-text);
   margin: 0;
   text-transform: uppercase;
+  letter-spacing: -0.4px;
 }
 
 .rn-extra-badge {
@@ -458,6 +459,7 @@
 .rn-extra-prices {
   text-align: right;
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 .rn-extra-compare {
@@ -480,7 +482,7 @@
   color: var(--rn-error);
   cursor: pointer;
   font-size: 20px;
-  padding: 2px;
+  padding: 2px 0 2px 4px;
   line-height: 1;
   flex-shrink: 0;
 }
