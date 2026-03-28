@@ -238,23 +238,7 @@
       const comparePrice = COMPARE_PRICES[v.qty] || 0;
       const savings = comparePrice > price ? Math.round((1 - price / comparePrice) * 100) : 0;
 
-      const isBelowActive = v.qty > selectedModalVariant;
-      const showLine = isActive || isBelowActive;
-
-      let lineCol = '<div class="rn-variant-line"></div>';
-      if (isActive) {
-        lineCol = `<div class="rn-variant-line-h"></div><div class="rn-variant-line"><div class="rn-variant-line-segment" style="height:50%;align-self:flex-end;"></div></div>`;
-      } else if (isBelowActive) {
-        lineCol = '<div class="rn-variant-line"><div class="rn-variant-line-segment"></div></div>';
-      }
-
-      // Gap line between rows (for rows below active)
-      let gapLine = '';
-      if (isBelowActive) {
-        gapLine = `<div class="rn-variant-gap-line"><div style="flex:1;"></div><div class="rn-variant-gap-line-spacer"><div class="rn-variant-line-segment"></div></div></div>`;
-      }
-
-      return `${gapLine}<div class="rn-variant-row">
+      return `
         <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
           <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
           <div class="rn-variant-info">
@@ -266,15 +250,8 @@
             <span class="rn-variant-price">${formatCOP(price)}</span>
           </div>
         </div>
-        ${lineCol}
-      </div>`;
+      `;
     }).join('');
-
-    // Final connector to pricing
-    const hasCardsBelow = VARIANT_OPTIONS.some(v => v.qty > selectedModalVariant);
-    if (hasCardsBelow) {
-      container.innerHTML += `<div class="rn-variant-gap-line" style="height:10px;"><div style="flex:1;"></div><div class="rn-variant-gap-line-spacer"><div class="rn-variant-line-segment"></div></div></div>`;
-    }
 
     // Bind click events on variant cards
     container.querySelectorAll('.rn-variant-card').forEach(card => {
