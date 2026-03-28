@@ -156,8 +156,10 @@
             <p class="rn-upsell-title rn-upsell-title-orange">KSM -66 ASHWAGANDHA</p>
             <div class="rn-upsell-body">
               <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221" alt="Ashwagandha">
-              <div class="rn-upsell-benefits">- Estrés<br>+ Calma</div>
-              <p class="rn-upsell-price">Solo por</p>
+              <div class="rn-upsell-text">
+                <div class="rn-upsell-benefits">- Estrés<br>+ Calma</div>
+                <p class="rn-upsell-price">Solo por</p>
+              </div>
             </div>
             <button class="rn-upsell-btn rn-upsell-btn-orange" id="rn-add-ashwagandha">+ AGREGAR <span>$49,900</span></button>
           </div>
@@ -165,8 +167,10 @@
             <p class="rn-upsell-title rn-upsell-title-blue">MAGNESIO FORTE</p>
             <div class="rn-upsell-body">
               <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235" alt="Magnesio Forte">
-              <div class="rn-upsell-benefits">+ Bisglicinato<br>+ Taurato<br>Relajación total</div>
-              <p class="rn-upsell-price">Solo por</p>
+              <div class="rn-upsell-text">
+                <div class="rn-upsell-benefits">+ Bisglicinato<br>+ Taurato<br>Relajación total</div>
+                <p class="rn-upsell-price">Solo por</p>
+              </div>
             </div>
             <button class="rn-upsell-btn rn-upsell-btn-blue" id="rn-add-magnesio">+ AGREGAR <span>$49,900</span></button>
           </div>

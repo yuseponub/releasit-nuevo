@@ -210,15 +210,19 @@
   background: #245A52;
 }
 
+.rn-upsell-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
 .rn-upsell-price {
   font-size: 8px;
   color: #888;
-  margin: 0;
+  margin: 2px 0 0;
   text-transform: uppercase;
-  flex-shrink: 0;
   font-weight: 600;
-  line-height: 1.2;
-  text-align: center;
 }
 
 .rn-upsell-dark .rn-upsell-price {
