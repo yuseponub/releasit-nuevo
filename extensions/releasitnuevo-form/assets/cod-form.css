@@ -47,6 +47,7 @@
   box-shadow: var(--rn-shadow);
   position: relative;
   animation: rn-slideUp 0.3s ease;
+  margin: 0 16px;
 }
 
 @keyframes rn-slideUp {
@@ -61,10 +62,10 @@
 }
 
 .rn-modal-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: none;
+  position: sticky;
+  top: 0;
+  float: right;
+  background: var(--rn-bg);
   border: none;
   font-size: 24px;
   cursor: pointer;
@@ -76,7 +77,9 @@
   justify-content: center;
   border-radius: 50%;
   transition: background 0.2s;
-  z-index: 1;
+  z-index: 10;
+  margin: 8px 8px 0 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .rn-modal-close:hover {
@@ -593,14 +596,14 @@
 /* Responsive */
 @media (max-width: 480px) {
   .rn-modal {
-    max-height: 95vh;
-    border-radius: var(--rn-radius) var(--rn-radius) 0 0;
-    margin-top: auto;
+    max-height: 85vh;
+    border-radius: var(--rn-radius);
+    margin: 0 12px;
   }
 
   .rn-overlay {
-    align-items: flex-end;
-    padding: 0;
+    align-items: center;
+    padding: 16px;
   }
 
   .rn-form-row {
