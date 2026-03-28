@@ -150,7 +150,7 @@
 .rn-connected-line {
   width: 3px;
   background: var(--rn-primary);
-  margin: 0 3px;
+  margin: 0 1px;
   border-radius: 2px;
   display: none;
 }
