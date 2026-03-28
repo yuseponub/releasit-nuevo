@@ -455,11 +455,23 @@
   margin-left: 3px;
 }
 
+.rn-extra-prices {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.rn-extra-compare {
+  display: block;
+  font-size: 10px;
+  color: var(--rn-text-light);
+  text-decoration: line-through;
+}
+
 .rn-extra-price {
+  display: block;
   font-size: 12px;
   font-weight: 700;
   color: var(--rn-text);
-  flex-shrink: 0;
 }
 
 .rn-extra-remove {

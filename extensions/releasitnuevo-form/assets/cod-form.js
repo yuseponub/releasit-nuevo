@@ -107,7 +107,7 @@
   ];
 
   // Get compare-at prices for savings calculation
-  const COMPARE_PRICES = { 1: 110000, 2: 220000, 3: 330000 };
+  const COMPARE_PRICES = { 1: 120000, 2: 220000, 3: 330000 };
 
   // Selected variant in modal
   let selectedModalVariant = 1;
@@ -276,7 +276,7 @@
             <div class="rn-extra-info">
               <p class="rn-extra-name">+ ${ep.title} ${ep.badge ? `<span class="rn-extra-badge">${ep.badge}</span>` : ''}</p>
             </div>
-            <div class="rn-extra-price">${formatCOP(ep.price)}</div>
+            <div class="rn-extra-prices">${ep.comparePrice ? `<span class="rn-extra-compare">${formatCOP(ep.comparePrice)}</span>` : ''}<span class="rn-extra-price">${formatCOP(ep.price)}</span></div>
             <button class="rn-extra-remove" data-extra-id="${ep.id}">&times;</button>
           </div>
         `).join('');
@@ -557,6 +557,7 @@
           title: 'ASHWAGANDHA',
           image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221',
           price: 49900,
+          comparePrice: 89900,
           bg: '#FFF1D5',
           badge: '$40,000 OFF',
         });
@@ -573,6 +574,7 @@
           title: 'MAGNESIO FORTE',
           image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235',
           price: 49900,
+          comparePrice: 89900,
           bg: '#FCEAED',
           badge: '$40,000 OFF',
         });
