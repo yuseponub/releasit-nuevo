@@ -317,11 +317,65 @@
     });
   }
 
+  // Detect selected variant from Instant.so variant picker
+  function getInstantVariant() {
+    const active = document.querySelector('.instant-custom-variant-picker[data-instant-state="active"]');
+    if (!active) return null;
+
+    const optionValue = active.getAttribute('data-instant-option-value') || '';
+    const titleEl = active.querySelector('[data-instant-dynamic-content-source="TITLE"]');
+    const variantTitleEl = active.querySelector('[data-instant-dynamic-content-source="VARIANT_TITLE"]');
+    const priceEl = active.querySelector('[data-instant-dynamic-content-source="PRICE"]');
+    const imgEl = active.querySelector('img');
+
+    // Parse quantity from option value (1, x2, x3)
+    let qty = 1;
+    const match = optionValue.match(/(\d+)/);
+    if (match) qty = parseInt(match[1]);
+
+    // Parse price
+    let price = 0;
+    if (priceEl) {
+      const priceText = priceEl.textContent.replace(/[^0-9]/g, '');
+      price = parseInt(priceText) || 0;
+      // Shopify formats with cents (89900.00 -> 8990000), normalize to COP
+      if (price > 1000000) price = Math.round(price / 100);
+    }
+
+    const title = (titleEl ? titleEl.textContent.trim() : 'Producto');
+    const variantTitle = variantTitleEl ? variantTitleEl.textContent.trim() : '';
+    const image = imgEl ? imgEl.src : '';
+
+    return { qty, price, title, variantTitle, image };
+  }
+
   // Open modal
   function openModal(product) {
-    if (product) {
+    // Try to detect Instant.so variant first
+    const instantVariant = getInstantVariant();
+    if (instantVariant && cart.length === 0) {
+      // Clear cart and add based on Instant.so selection
+      cart = [];
+      const productTitle = instantVariant.title;
+      const image = instantVariant.image;
+
+      // Add items based on selected quantity
+      cart.push({
+        productId: 'instant-product',
+        variantId: 'instant-variant-' + instantVariant.qty,
+        title: (instantVariant.variantTitle ? instantVariant.variantTitle + ' ' : '') + productTitle,
+        image: image,
+        quantity: instantVariant.qty,
+      });
+
+      // Override bundle pricing with the actual Instant.so price
+      if (instantVariant.price > 0) {
+        BUNDLE_PRICING[instantVariant.qty] = instantVariant.price;
+      }
+    } else if (product) {
       addToCart(product);
     }
+
     const overlay = document.getElementById('rn-overlay');
     if (overlay) {
       overlay.classList.add('rn-active');
@@ -336,6 +390,8 @@
     if (overlay) {
       overlay.classList.remove('rn-active');
       document.body.style.overflow = '';
+      // Reset cart so next open picks up current Instant.so variant
+      cart = [];
     }
   }
 
