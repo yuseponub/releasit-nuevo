@@ -163,31 +163,58 @@
   border: 3px solid var(--rn-primary);
   background: #D8EFEC;
   box-shadow: 0 0 0 1px var(--rn-primary);
-  position: relative;
 }
 
-/* Horizontal line from active card */
-.rn-variant-card.rn-variant-active::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  right: -6px;
-  width: 5px;
+
+/* Variant row: card + line column */
+.rn-variant-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.rn-variant-row .rn-variant-card {
+  flex: 1;
+}
+
+.rn-variant-line {
+  width: 12px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.rn-variant-line-segment {
+  width: 3px;
+  background: var(--rn-primary);
+  height: 100%;
+}
+
+/* Horizontal connector from active card */
+.rn-variant-line-h {
+  width: 12px;
   height: 3px;
   background: var(--rn-primary);
+  align-self: center;
+  flex-shrink: 0;
 }
 
-/* Cards below active get a right border as connector */
-.rn-variant-card.rn-below-active {
-  border-right: 3px solid var(--rn-primary);
-}
-
-/* Gap filler between cards for continuous line */
-.rn-gap-fill {
-  border-right: 3px solid var(--rn-primary);
+/* Gap line between rows */
+.rn-variant-gap-line {
+  display: flex;
+  justify-content: flex-end;
   height: 4px;
-  margin-top: -4px;
-  margin-bottom: -4px;
+}
+
+.rn-variant-gap-line .rn-variant-line-segment {
+  height: 100%;
+}
+
+.rn-variant-gap-line-spacer {
+  width: 12px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
 }
 
 

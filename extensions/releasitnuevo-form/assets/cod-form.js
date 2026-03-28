@@ -239,13 +239,23 @@
       const savings = comparePrice > price ? Math.round((1 - price / comparePrice) * 100) : 0;
 
       const isBelowActive = v.qty > selectedModalVariant;
-      const needsGapFill = isBelowActive || isActive;
-      let html = '';
-      if (isBelowActive) {
-        html += '<div class="rn-gap-fill"></div>';
+      const showLine = isActive || isBelowActive;
+
+      let lineCol = '<div class="rn-variant-line"></div>';
+      if (isActive) {
+        lineCol = `<div class="rn-variant-line-h"></div><div class="rn-variant-line"><div class="rn-variant-line-segment" style="height:50%;align-self:flex-end;"></div></div>`;
+      } else if (isBelowActive) {
+        lineCol = '<div class="rn-variant-line"><div class="rn-variant-line-segment"></div></div>';
       }
-      html += `
-        <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''} ${isBelowActive ? 'rn-below-active' : ''}" data-variant-qty="${v.qty}">
+
+      // Gap line between rows (for rows below active)
+      let gapLine = '';
+      if (isBelowActive) {
+        gapLine = `<div class="rn-variant-gap-line"><div style="flex:1;"></div><div class="rn-variant-gap-line-spacer"><div class="rn-variant-line-segment"></div></div></div>`;
+      }
+
+      return `${gapLine}<div class="rn-variant-row">
+        <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
           <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
           <div class="rn-variant-info">
             <p class="rn-variant-name">${v.label}</p>
@@ -256,14 +266,14 @@
             <span class="rn-variant-price">${formatCOP(price)}</span>
           </div>
         </div>
-      `;
-      return html;
+        ${lineCol}
+      </div>`;
     }).join('');
 
-    // Add gap fill after last card to reach pricing
+    // Final connector to pricing
     const hasCardsBelow = VARIANT_OPTIONS.some(v => v.qty > selectedModalVariant);
     if (hasCardsBelow) {
-      container.innerHTML += '<div class="rn-gap-fill" style="height:10px;"></div>';
+      container.innerHTML += `<div class="rn-variant-gap-line" style="height:10px;"><div style="flex:1;"></div><div class="rn-variant-gap-line-spacer"><div class="rn-variant-line-segment"></div></div></div>`;
     }
 
     // Bind click events on variant cards
