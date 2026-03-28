@@ -12,7 +12,7 @@
   const BUNDLE_PRICING = {
     1: 89900,
     2: 129900,
-    3: 159900,
+    3: 169900,
   };
 
   // Colombian departments
