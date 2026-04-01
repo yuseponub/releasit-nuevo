@@ -195,7 +195,11 @@ async function handleCreateOrder(request: Request, body: any) {
       return json({ success: false, error: "Faltan campos requeridos" }, { status: 400 });
     }
 
-    // Get client IP from request headers
+    // Format phone to E.164 (+57 for Colombia)
+    const formattedPhone = formatPhoneCO(phone);
+    const formattedPhoneConfirm = phoneConfirm ? formatPhoneCO(phoneConfirm) : "";
+
+    // Get client IP
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
       || request.headers.get("cf-connecting-ip")
       || request.headers.get("x-real-ip")
@@ -208,8 +212,6 @@ async function handleCreateOrder(request: Request, body: any) {
     // Resolve variant IDs
     const resolvedItems = resolveVariantIds(admin, items);
     console.log("[CreateOrder] Resolved:", resolvedItems.map((i: any) => ({ t: i.title, v: i.variantId })));
-
-    const fullAddress = neighborhood ? `${address}, Barrio: ${neighborhood}` : address;
 
     // Distribute bundle price across line items
     const itemPrices = distributePrice(resolvedItems, totalQty);
@@ -231,28 +233,47 @@ async function handleCreateOrder(request: Request, body: any) {
       };
     });
 
-    // Build detailed order note (like Releasit)
+    // Step 1: Create or find customer first
+    let customerId: string | null = null;
+    try {
+      const customerResult = await findOrCreateCustomer(admin, {
+        firstName, lastName, phone: formattedPhone, email,
+      });
+      customerId = customerResult;
+      console.log("[CreateOrder] Customer ID:", customerId);
+    } catch (e: any) {
+      console.error("[CreateOrder] Customer creation failed (non-fatal):", e.message);
+    }
+
+    // Build detailed order note
     const orderNote = [
-      `📦 Pedido COD - ReleasitNuevo`,
+      `Pedido COD - ReleasitNuevo`,
       ``,
-      `👤 Cliente: ${firstName} ${lastName}`,
-      `📱 Teléfono: ${phone}`,
-      `📱 Tel. confirmación: ${phoneConfirm || 'N/A'}`,
-      `📧 Email: ${email || 'N/A'}`,
+      `Cliente: ${firstName} ${lastName}`,
+      `Telefono: ${formattedPhone}`,
+      `Tel. confirmacion: ${formattedPhoneConfirm || 'N/A'}`,
+      `Email: ${email || 'N/A'}`,
       ``,
-      `📍 Dirección: ${address}`,
-      `🏘️ Barrio: ${neighborhood || 'N/A'}`,
-      `🏙️ Ciudad: ${city}`,
-      `🗺️ Departamento: ${department}`,
+      `Direccion: ${address}`,
+      `Barrio: ${neighborhood || 'N/A'}`,
+      `Ciudad: ${city}`,
+      `Departamento: ${department}`,
       ``,
-      `🛒 Productos: ${itemsList}`,
-      `📦 Bundle: ${totalQty} unidad(es)`,
-      `💰 Total: $${bundlePrice.toLocaleString('es-CO')} COP`,
+      `Productos: ${itemsList}`,
+      `Bundle: ${totalQty} unidad(es)`,
+      `Total: $${bundlePrice.toLocaleString('es-CO')} COP`,
       ``,
-      `💳 Método de pago: Contra entrega (COD)`,
-      `🌐 IP: ${clientIp}`,
-      `🕐 Fecha: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`,
+      `Metodo de pago: Contra entrega (COD)`,
+      `IP: ${clientIp}`,
+      `Fecha: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`,
     ].join("\n");
+
+    // Build customer field for order
+    const customerField = customerId
+      ? { toAssociate: { id: customerId } }
+      : email
+        ? { toUpsert: { email, firstName, lastName, phone: formattedPhone } }
+        : undefined;
 
     const orderResponse = await admin.graphql(`
       mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
@@ -265,38 +286,41 @@ async function handleCreateOrder(request: Request, body: any) {
       variables: {
         order: {
           lineItems,
-          customer: {
-            toUpsert: {
-              email: email || undefined,
-              firstName,
-              lastName,
-              phone,
-            },
-          },
+          ...(customerField ? { customer: customerField } : {}),
           shippingAddress: {
-            firstName, lastName, phone,
+            firstName, lastName,
+            phone: formattedPhone,
             address1: address,
             address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
-            city, province: department,
-            country: "Colombia", countryCode: "CO", zip: "000000",
+            city,
+            province: department,
+            country: "Colombia",
+            countryCode: "CO",
+            zip: "000000",
           },
           billingAddress: {
-            firstName, lastName, phone,
+            firstName, lastName,
+            phone: formattedPhone,
             address1: address,
             address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
-            city, province: department,
-            country: "Colombia", countryCode: "CO", zip: "000000",
+            city,
+            province: department,
+            country: "Colombia",
+            countryCode: "CO",
+            zip: "000000",
           },
           email: email || undefined,
-          phone,
+          phone: formattedPhone,
           note: orderNote,
           tags: ["releasitnuevo", "cod", `bundle-${totalQty}`],
           financialStatus: "PENDING",
           customAttributes: [
             { key: "Fuente", value: "ReleasitNuevo COD Form" },
-            { key: "Método de pago", value: "Contra entrega (COD)" },
-            { key: "Teléfono confirmación", value: phoneConfirm || "" },
+            { key: "Metodo de pago", value: "Contra entrega (COD)" },
+            { key: "Telefono", value: formattedPhone },
+            { key: "Telefono confirmacion", value: formattedPhoneConfirm },
             { key: "Barrio", value: neighborhood || "" },
+            { key: "Direccion completa", value: `${address}, ${neighborhood ? 'Barrio: ' + neighborhood + ', ' : ''}${city}, ${department}` },
             { key: "Bundle", value: `${totalQty} unidad(es)` },
             { key: "Total bundle", value: `$${bundlePrice.toLocaleString('es-CO')} COP` },
             { key: "IP", value: clientIp },
@@ -365,7 +389,8 @@ async function handleCreateDraft(request: Request, body: any) {
       return json({ success: false, error: "Nombre y telefono requeridos" }, { status: 400 });
     }
 
-    const resolvedItems = items?.length > 0 ? await resolveVariantIds(admin, items) : [];
+    const formattedPhone = formatPhoneCO(phone);
+    const resolvedItems = items?.length > 0 ? resolveVariantIds(admin, items) : [];
     const lineItems = resolvedItems.length > 0
       ? resolvedItems.map((item: any) => {
           const vid = String(item.variantId);
@@ -387,11 +412,11 @@ async function handleCreateDraft(request: Request, body: any) {
       variables: {
         input: {
           lineItems: lineItems.length > 0 ? lineItems : undefined,
-          note: `Abandono parcial - ReleasitNuevo\nNombre: ${firstName} ${lastName || ''}\nTel: ${phone}`,
+          note: `Abandono parcial - ReleasitNuevo\nNombre: ${firstName} ${lastName || ''}\nTel: ${formattedPhone}`,
           tags: ["releasitnuevo", "abandono"],
           shippingAddress: {
             firstName, lastName: lastName || ".",
-            phone, address1: "Pendiente",
+            phone: formattedPhone, address1: "Pendiente",
             city: "Pendiente", province: "Pendiente",
             country: "Colombia", countryCode: "CO", zip: "000000",
           },
@@ -439,6 +464,121 @@ async function handleCreateDraft(request: Request, body: any) {
 }
 
 // ===================== HELPERS =====================
+
+// Format Colombian phone to E.164 (+57...)
+function formatPhoneCO(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("57") && digits.length >= 12) return "+" + digits;
+  if (digits.startsWith("+57")) return digits;
+  if (digits.length === 10 && digits.startsWith("3")) return "+57" + digits;
+  if (digits.length === 7) return "+57" + digits; // landline
+  return "+57" + digits; // fallback
+}
+
+// Find or create a customer by phone, returns customer GID or null
+async function findOrCreateCustomer(
+  admin: any,
+  data: { firstName: string; lastName: string; phone: string; email?: string }
+): Promise<string | null> {
+  // First try to find by phone
+  try {
+    const searchResp = await admin.graphql(`
+      query findCustomer($query: String!) {
+        customers(first: 1, query: $query) {
+          edges { node { id } }
+        }
+      }
+    `, {
+      variables: { query: `phone:${data.phone}` },
+    });
+
+    const searchData = await searchResp.json();
+    const existing = searchData.data?.customers?.edges?.[0]?.node?.id;
+    if (existing) {
+      console.log("[Customer] Found existing:", existing);
+      return existing;
+    }
+  } catch (e: any) {
+    console.error("[Customer] Search failed:", e.message);
+  }
+
+  // If email provided, also search by email
+  if (data.email) {
+    try {
+      const emailResp = await admin.graphql(`
+        query findCustomer($query: String!) {
+          customers(first: 1, query: $query) {
+            edges { node { id } }
+          }
+        }
+      `, {
+        variables: { query: `email:${data.email}` },
+      });
+
+      const emailData = await emailResp.json();
+      const existing = emailData.data?.customers?.edges?.[0]?.node?.id;
+      if (existing) {
+        console.log("[Customer] Found by email:", existing);
+        return existing;
+      }
+    } catch (e: any) {
+      console.error("[Customer] Email search failed:", e.message);
+    }
+  }
+
+  // Create new customer
+  try {
+    const createResp = await admin.graphql(`
+      mutation customerCreate($input: CustomerInput!) {
+        customerCreate(input: $input) {
+          customer { id }
+          userErrors { field, message }
+        }
+      }
+    `, {
+      variables: {
+        input: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          email: data.email || undefined,
+          tags: ["releasitnuevo", "cod"],
+        },
+      },
+    });
+
+    const createData = await createResp.json();
+    const newCustomer = createData.data?.customerCreate?.customer?.id;
+    if (newCustomer) {
+      console.log("[Customer] Created:", newCustomer);
+      return newCustomer;
+    }
+
+    const errors = createData.data?.customerCreate?.userErrors;
+    if (errors?.length) {
+      console.error("[Customer] Create errors:", errors);
+      // If "phone has already been taken", try to find again
+      if (errors.some((e: any) => e.message?.includes("taken"))) {
+        // Phone might exist under different format, try broader search
+        const retryResp = await admin.graphql(`
+          query findCustomer($query: String!) {
+            customers(first: 1, query: $query) {
+              edges { node { id } }
+            }
+          }
+        `, {
+          variables: { query: data.phone.replace("+", "") },
+        });
+        const retryData = await retryResp.json();
+        return retryData.data?.customers?.edges?.[0]?.node?.id || null;
+      }
+    }
+  } catch (e: any) {
+    console.error("[Customer] Create failed:", e.message);
+  }
+
+  return null;
+}
 
 // Hardcoded variant ID map (config key → real Shopify variant ID)
 const VARIANT_ID_MAP: Record<string, string> = {
