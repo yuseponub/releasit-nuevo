@@ -841,6 +841,28 @@
     const totalQty = getTotalQty();
     const bundlePrice = calcBundlePrice(totalQty);
 
+    // Build items: main cart + upsell extras
+    var allItems = cart.map(i => ({
+      variantId: resolveVariantId(i),
+      title: i.title,
+      quantity: i.quantity,
+      isUpsell: false,
+    }));
+
+    // Add upsell extras with their discounted price
+    extraProducts.forEach(function(ep) {
+      allItems.push({
+        variantId: resolveVariantId(ep),
+        title: ep.title,
+        quantity: 1,
+        isUpsell: true,
+        upsellPrice: ep.price,
+        upsellComparePrice: ep.comparePrice || ep.price,
+      });
+    });
+
+    const extrasTotal = extraProducts.reduce(function(sum, ep) { return sum + ep.price; }, 0);
+
     const data = {
       firstName: document.getElementById('rn-firstName').value.trim(),
       lastName: document.getElementById('rn-lastName').value.trim(),
@@ -851,13 +873,9 @@
       neighborhood: document.getElementById('rn-neighborhood').value.trim(),
       department: document.getElementById('rn-department').value,
       city: document.getElementById('rn-city').value.trim(),
-      items: cart.map(i => ({
-        variantId: resolveVariantId(i),
-        title: i.title,
-        quantity: i.quantity,
-      })),
+      items: allItems,
       bundleSize: totalQty,
-      total: bundlePrice,
+      total: bundlePrice + extrasTotal,
     };
 
     try {

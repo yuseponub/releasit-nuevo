@@ -205,18 +205,30 @@ async function handleCreateOrder(request: Request, body: any) {
       || request.headers.get("x-real-ip")
       || "N/A";
 
+    const mainQtyTotal = items.filter((i: any) => !i.isUpsell).reduce((sum: number, i: any) => sum + i.quantity, 0);
     const totalQty = items.reduce((sum: number, i: any) => sum + i.quantity, 0);
-    const bundlePrice = calcBundlePrice(totalQty);
-    const itemsList = items.map((i: any) => `${i.title} x${i.quantity}`).join(", ");
+    const bundlePrice = calcBundlePrice(mainQtyTotal);
+    const upsellTotal = items.filter((i: any) => i.isUpsell).reduce((sum: number, i: any) => sum + (i.upsellPrice || 49900), 0);
+    const grandTotal = bundlePrice + upsellTotal;
+    const itemsList = items.map((i: any) => `${i.title} x${i.quantity}${i.isUpsell ? ' (upsell $' + (i.upsellPrice || 49900).toLocaleString('es-CO') + ')' : ''}`).join(", ");
 
-    // Resolve variant IDs
-    const resolvedItems = resolveVariantIds(admin, items);
-    console.log("[CreateOrder] Resolved:", resolvedItems.map((i: any) => ({ t: i.title, v: i.variantId })));
+    // Separate main items from upsells
+    const mainItems = items.filter((i: any) => !i.isUpsell);
+    const upsellItems = items.filter((i: any) => i.isUpsell);
 
-    // Distribute bundle price across line items
-    const itemPrices = distributePrice(resolvedItems, totalQty);
+    // Resolve variant IDs for all items
+    const resolvedMain = resolveVariantIds(admin, mainItems);
+    const resolvedUpsells = resolveVariantIds(admin, upsellItems);
 
-    const lineItems = resolvedItems.map((item: any, idx: number) => {
+    console.log("[CreateOrder] Main:", resolvedMain.map((i: any) => ({ t: i.title, v: i.variantId })));
+    console.log("[CreateOrder] Upsells:", resolvedUpsells.map((i: any) => ({ t: i.title, v: i.variantId, p: i.upsellPrice })));
+
+    // Distribute bundle price across MAIN items only
+    const mainQty = mainItems.reduce((sum: number, i: any) => sum + i.quantity, 0);
+    const itemPrices = distributePrice(resolvedMain, mainQty);
+
+    // Build line items for main products (bundle pricing)
+    const mainLineItems = resolvedMain.map((item: any, idx: number) => {
       const vid = String(item.variantId);
       const lineTotal = itemPrices[idx];
       const pricePerUnit = Math.round(lineTotal / item.quantity);
@@ -232,6 +244,25 @@ async function handleCreateOrder(request: Request, body: any) {
         },
       };
     });
+
+    // Build line items for upsells (discounted price)
+    const upsellLineItems = resolvedUpsells.map((item: any) => {
+      const vid = String(item.variantId);
+      const price = item.upsellPrice || 49900;
+
+      return {
+        variantId: vid.startsWith("gid://") ? vid : `gid://shopify/ProductVariant/${vid}`,
+        quantity: item.quantity || 1,
+        priceSet: {
+          shopMoney: {
+            amount: String(price),
+            currencyCode: "COP",
+          },
+        },
+      };
+    });
+
+    const lineItems = [...mainLineItems, ...upsellLineItems];
 
     // Step 1: Create or find customer first
     let customerId: string | null = null;
@@ -260,8 +291,9 @@ async function handleCreateOrder(request: Request, body: any) {
       `Departamento: ${department}`,
       ``,
       `Productos: ${itemsList}`,
-      `Bundle: ${totalQty} unidad(es)`,
-      `Total: $${bundlePrice.toLocaleString('es-CO')} COP`,
+      `Bundle: ${mainQtyTotal} unidad(es) - $${bundlePrice.toLocaleString('es-CO')} COP`,
+      upsellTotal > 0 ? `Upsells: $${upsellTotal.toLocaleString('es-CO')} COP` : '',
+      `Total: $${grandTotal.toLocaleString('es-CO')} COP`,
       ``,
       `Metodo de pago: Contra entrega (COD)`,
       `IP: ${clientIp}`,
@@ -323,6 +355,8 @@ async function handleCreateOrder(request: Request, body: any) {
             { key: "Direccion completa", value: `${address}, ${neighborhood ? 'Barrio: ' + neighborhood + ', ' : ''}${city}, ${department}` },
             { key: "Bundle", value: `${totalQty} unidad(es)` },
             { key: "Total bundle", value: `$${bundlePrice.toLocaleString('es-CO')} COP` },
+            { key: "Upsells", value: upsellTotal > 0 ? `$${upsellTotal.toLocaleString('es-CO')} COP` : "Ninguno" },
+            { key: "Total orden", value: `$${grandTotal.toLocaleString('es-CO')} COP` },
             { key: "IP", value: clientIp },
           ],
         },
@@ -355,8 +389,8 @@ async function handleCreateOrder(request: Request, body: any) {
           firstName, lastName, phone, phoneConfirm, email,
           address: fullAddress, neighborhood, department, city,
           items: JSON.stringify(items),
-          subtotal: bundlePrice, total: bundlePrice,
-          bundleSize: totalQty, status: "pending",
+          subtotal: bundlePrice, total: grandTotal,
+          bundleSize: mainQtyTotal, status: "pending",
         },
       });
     } catch (dbErr: any) {
