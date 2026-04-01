@@ -65,6 +65,27 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     }
 
+    // Test auth endpoint - test if authenticate works
+    if (path.includes("test-auth")) {
+      try {
+        // Try with reconstructed request
+        const authReq = new Request(request.url, {
+          method: request.method,
+          headers: request.headers,
+          body: bodyText || undefined,
+        });
+        const { admin, session } = await authenticate.public.appProxy(authReq);
+        return json({ ok: true, shop: session?.shop, hasAdmin: !!admin });
+      } catch (e: any) {
+        // Check if it's a Response thrown by Shopify
+        if (e instanceof Response) {
+          const respText = await e.text().catch(() => "unreadable");
+          return json({ ok: false, type: "Response", status: e.status, body: respText.substring(0, 300) });
+        }
+        return json({ ok: false, type: "Error", message: e.message, stack: (e.stack || "").substring(0, 500) });
+      }
+    }
+
     // Parse body (JSON or form-encoded)
     let body: any = {};
     if (bodyText) {
