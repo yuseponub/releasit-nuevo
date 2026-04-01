@@ -887,7 +887,13 @@
       console.log('[RN] Result:', JSON.stringify(result));
 
       if (result.success) {
-        // Show success - hide sections safely
+        // Redirect to Shopify order status page if available
+        if (result.statusPageUrl) {
+          window.location.href = result.statusPageUrl;
+          return;
+        }
+
+        // Fallback: show success screen
         ['rn-cart-section', 'rn-crosssell', 'rn-savings', 'rn-pricing', 'rn-form-section', 'rn-actions'].forEach(function(id) {
           var el = document.getElementById(id);
           if (el) el.style.display = 'none';

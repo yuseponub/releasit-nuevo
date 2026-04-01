@@ -257,7 +257,7 @@ async function handleCreateOrder(request: Request, body: any) {
     const orderResponse = await admin.graphql(`
       mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
         orderCreate(order: $order, options: $options) {
-          order { id, name }
+          order { id, name, statusPageUrl }
           userErrors { field, message }
         }
       }
@@ -265,6 +265,14 @@ async function handleCreateOrder(request: Request, body: any) {
       variables: {
         order: {
           lineItems,
+          customer: {
+            toUpsert: {
+              email: email || undefined,
+              firstName,
+              lastName,
+              phone,
+            },
+          },
           shippingAddress: {
             firstName, lastName, phone,
             address1: address,
@@ -313,6 +321,7 @@ async function handleCreateOrder(request: Request, body: any) {
 
     const orderId = orderResult?.order?.id || "";
     const orderName = orderResult?.order?.name || "";
+    const statusPageUrl = orderResult?.order?.statusPageUrl || "";
 
     // Save to DB (non-fatal)
     try {
@@ -340,7 +349,7 @@ async function handleCreateOrder(request: Request, body: any) {
       });
     } catch (_) {}
 
-    return json({ success: true, orderId, orderName });
+    return json({ success: true, orderId, orderName, statusPageUrl });
   } catch (e: any) {
     console.error("[CreateOrder] FATAL:", e.message, e.stack);
     return json({ success: false, error: "Error: " + e.message }, { status: 500 });
