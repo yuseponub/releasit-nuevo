@@ -38,25 +38,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const url = new URL(request.url);
     const path = url.searchParams.get("path") || url.pathname;
-    console.log("[AppProxy POST] path:", path, "url:", request.url);
-    console.log("[AppProxy POST] content-type:", request.headers.get("content-type"));
+    console.log("[AppProxy POST] path:", path);
 
-    // Read body text ONCE
+    // Clone request BEFORE reading body — clone keeps body intact for auth
+    const authRequest = request.clone();
+
+    // Now read body from original
     let bodyText = "";
     try {
       bodyText = await request.text();
     } catch (e: any) {
       console.error("[AppProxy] Failed to read body:", e.message);
     }
-    console.log("[AppProxy] Body (first 300):", bodyText.substring(0, 300));
 
-    // Debug endpoint - returns what was received
+    // Debug endpoints
     if (path.includes("test-post")) {
       let parsedBody: any = null;
       try { parsedBody = JSON.parse(bodyText); } catch { parsedBody = "not-json"; }
       return json({
-        ok: true,
-        path,
+        ok: true, path,
         contentType: request.headers.get("content-type"),
         bodyLength: bodyText.length,
         bodyPreview: bodyText.substring(0, 500),
@@ -65,24 +65,16 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       });
     }
 
-    // Test auth endpoint - test if authenticate works
     if (path.includes("test-auth")) {
       try {
-        // Try with reconstructed request
-        const authReq = new Request(request.url, {
-          method: request.method,
-          headers: request.headers,
-          body: bodyText || undefined,
-        });
-        const { admin, session } = await authenticate.public.appProxy(authReq);
+        const { admin, session } = await authenticate.public.appProxy(authRequest);
         return json({ ok: true, shop: session?.shop, hasAdmin: !!admin });
       } catch (e: any) {
-        // Check if it's a Response thrown by Shopify
         if (e instanceof Response) {
           const respText = await e.text().catch(() => "unreadable");
           return json({ ok: false, type: "Response", status: e.status, body: respText.substring(0, 300) });
         }
-        return json({ ok: false, type: "Error", message: e.message, stack: (e.stack || "").substring(0, 500) });
+        return json({ ok: false, type: "Error", message: e.message });
       }
     }
 
@@ -96,13 +88,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         body = Object.fromEntries(params);
       }
     }
-
-    // Rebuild request with body intact for authenticate
-    const authRequest = new Request(request.url, {
-      method: request.method,
-      headers: request.headers,
-      body: bodyText || undefined,
-    });
 
     if (path.includes("create-order")) {
       return await handleCreateOrder(authRequest, body);
