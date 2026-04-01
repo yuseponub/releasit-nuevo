@@ -36,12 +36,34 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 // POST requests
 export const action = async ({ request }: ActionFunctionArgs) => {
   try {
-    const path = getProxyPath(request);
-    console.log("[AppProxy POST]", path);
+    const url = new URL(request.url);
+    const path = url.searchParams.get("path") || url.pathname;
+    console.log("[AppProxy POST] path:", path, "url:", request.url);
+    console.log("[AppProxy POST] content-type:", request.headers.get("content-type"));
 
-    // Read body text ONCE from original request
-    const bodyText = await request.text();
-    console.log("[AppProxy] Body length:", bodyText.length);
+    // Read body text ONCE
+    let bodyText = "";
+    try {
+      bodyText = await request.text();
+    } catch (e: any) {
+      console.error("[AppProxy] Failed to read body:", e.message);
+    }
+    console.log("[AppProxy] Body (first 300):", bodyText.substring(0, 300));
+
+    // Debug endpoint - returns what was received
+    if (path.includes("test-post")) {
+      let parsedBody: any = null;
+      try { parsedBody = JSON.parse(bodyText); } catch { parsedBody = "not-json"; }
+      return json({
+        ok: true,
+        path,
+        contentType: request.headers.get("content-type"),
+        bodyLength: bodyText.length,
+        bodyPreview: bodyText.substring(0, 500),
+        parsedBody: typeof parsedBody === "object" ? "valid-json" : parsedBody,
+        queryParams: Object.fromEntries(url.searchParams),
+      });
+    }
 
     // Parse body (JSON or form-encoded)
     let body: any = {};
@@ -53,9 +75,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         body = Object.fromEntries(params);
       }
     }
-    console.log("[AppProxy] Body keys:", Object.keys(body));
 
-    // Rebuild request with body for authenticate (it may need to read it)
+    // Rebuild request with body intact for authenticate
     const authRequest = new Request(request.url, {
       method: request.method,
       headers: request.headers,
@@ -72,8 +93,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     return json({ error: "Not found", path }, { status: 404 });
   } catch (e: any) {
-    console.error("[AppProxy] FATAL action error:", e.message, e.stack);
-    return json({ success: false, error: "Error del servidor: " + (e.message || "desconocido") }, { status: 500 });
+    console.error("[AppProxy] FATAL:", e.message, e.stack);
+    return json({ success: false, error: "Error fatal: " + (e.message || "desconocido") }, { status: 500 });
   }
 };
 
