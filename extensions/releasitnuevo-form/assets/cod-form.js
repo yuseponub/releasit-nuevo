@@ -859,13 +859,30 @@
     };
 
     try {
+      console.log('[RN] Submitting order to:', APP_PROXY_BASE + '/create-order');
+      console.log('[RN] Data:', JSON.stringify(data));
+
       const resp = await fetch(APP_PROXY_BASE + '/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
-      const result = await resp.json();
+      console.log('[RN] Response status:', resp.status);
+
+      // Check if response is JSON
+      const contentType = resp.headers.get('content-type') || '';
+      let result;
+      if (contentType.includes('application/json')) {
+        result = await resp.json();
+      } else {
+        // Shopify might return HTML error page
+        const text = await resp.text();
+        console.error('[RN] Non-JSON response:', text.substring(0, 500));
+        throw new Error('El servidor no respondio correctamente (status: ' + resp.status + ')');
+      }
+
+      console.log('[RN] Result:', JSON.stringify(result));
 
       if (result.success) {
         // Show success
@@ -889,8 +906,8 @@
         btn.innerHTML = originalText;
       }
     } catch (e) {
-      console.error('ReleasitNuevo: Order submission failed', e);
-      alert('Error de conexion. Por favor intenta de nuevo.');
+      console.error('[RN] Order submission failed:', e);
+      alert('Error: ' + (e.message || 'Error de conexion. Intenta de nuevo.'));
       btn.disabled = false;
       btn.innerHTML = originalText;
     }
