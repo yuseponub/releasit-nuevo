@@ -66,16 +66,34 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     }
 
     if (path.includes("test-auth")) {
+      // Test 1: clone (current approach)
+      let test1: any = { method: "clone" };
       try {
         const { admin, session } = await authenticate.public.appProxy(authRequest);
-        return json({ ok: true, shop: session?.shop, hasAdmin: !!admin });
+        test1 = { ...test1, ok: true, shop: session?.shop, hasAdmin: !!admin };
       } catch (e: any) {
         if (e instanceof Response) {
-          const respText = await e.text().catch(() => "unreadable");
-          return json({ ok: false, type: "Response", status: e.status, body: respText.substring(0, 300) });
+          test1 = { ...test1, ok: false, status: e.status };
+        } else {
+          test1 = { ...test1, ok: false, error: e.message };
         }
-        return json({ ok: false, type: "Error", message: e.message });
       }
+
+      // Test 2: GET request with same URL (signature is in query params)
+      let test2: any = { method: "GET-trick" };
+      try {
+        const getReq = new Request(url.toString(), { method: "GET", headers: request.headers });
+        const { admin, session } = await authenticate.public.appProxy(getReq);
+        test2 = { ...test2, ok: true, shop: session?.shop, hasAdmin: !!admin };
+      } catch (e: any) {
+        if (e instanceof Response) {
+          test2 = { ...test2, ok: false, status: e.status };
+        } else {
+          test2 = { ...test2, ok: false, error: e.message };
+        }
+      }
+
+      return json({ test1, test2 });
     }
 
     // Parse body (JSON or form-encoded)
