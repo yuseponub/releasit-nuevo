@@ -195,11 +195,18 @@ async function handleCreateOrder(request: Request, body: any) {
       return json({ success: false, error: "Faltan campos requeridos" }, { status: 400 });
     }
 
+    // Get client IP from request headers
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || request.headers.get("cf-connecting-ip")
+      || request.headers.get("x-real-ip")
+      || "N/A";
+
     const totalQty = items.reduce((sum: number, i: any) => sum + i.quantity, 0);
     const bundlePrice = calcBundlePrice(totalQty);
+    const itemsList = items.map((i: any) => `${i.title} x${i.quantity}`).join(", ");
 
     // Resolve variant IDs
-    const resolvedItems = await resolveVariantIds(admin, items);
+    const resolvedItems = resolveVariantIds(admin, items);
     console.log("[CreateOrder] Resolved:", resolvedItems.map((i: any) => ({ t: i.title, v: i.variantId })));
 
     const fullAddress = neighborhood ? `${address}, Barrio: ${neighborhood}` : address;
@@ -209,7 +216,6 @@ async function handleCreateOrder(request: Request, body: any) {
 
     const lineItems = resolvedItems.map((item: any, idx: number) => {
       const vid = String(item.variantId);
-      // Price per unit for this line item (total for this item / quantity)
       const lineTotal = itemPrices[idx];
       const pricePerUnit = Math.round(lineTotal / item.quantity);
 
@@ -225,6 +231,29 @@ async function handleCreateOrder(request: Request, body: any) {
       };
     });
 
+    // Build detailed order note (like Releasit)
+    const orderNote = [
+      `📦 Pedido COD - ReleasitNuevo`,
+      ``,
+      `👤 Cliente: ${firstName} ${lastName}`,
+      `📱 Teléfono: ${phone}`,
+      `📱 Tel. confirmación: ${phoneConfirm || 'N/A'}`,
+      `📧 Email: ${email || 'N/A'}`,
+      ``,
+      `📍 Dirección: ${address}`,
+      `🏘️ Barrio: ${neighborhood || 'N/A'}`,
+      `🏙️ Ciudad: ${city}`,
+      `🗺️ Departamento: ${department}`,
+      ``,
+      `🛒 Productos: ${itemsList}`,
+      `📦 Bundle: ${totalQty} unidad(es)`,
+      `💰 Total: $${bundlePrice.toLocaleString('es-CO')} COP`,
+      ``,
+      `💳 Método de pago: Contra entrega (COD)`,
+      `🌐 IP: ${clientIp}`,
+      `🕐 Fecha: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`,
+    ].join("\n");
+
     const orderResponse = await admin.graphql(`
       mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
         orderCreate(order: $order, options: $options) {
@@ -238,25 +267,31 @@ async function handleCreateOrder(request: Request, body: any) {
           lineItems,
           shippingAddress: {
             firstName, lastName, phone,
-            address1: fullAddress,
+            address1: address,
+            address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
             city, province: department,
             country: "Colombia", countryCode: "CO", zip: "000000",
           },
           billingAddress: {
             firstName, lastName, phone,
-            address1: fullAddress,
+            address1: address,
+            address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
             city, province: department,
             country: "Colombia", countryCode: "CO", zip: "000000",
           },
           email: email || undefined,
           phone,
-          note: `Pedido COD - ReleasitNuevo\nBundle: ${totalQty} productos\nBarrio: ${neighborhood || 'N/A'}\nTel confirmado: ${phoneConfirm || 'N/A'}`,
+          note: orderNote,
           tags: ["releasitnuevo", "cod", `bundle-${totalQty}`],
           financialStatus: "PENDING",
           customAttributes: [
-            { key: "source", value: "releasitnuevo" },
-            { key: "bundle_size", value: String(totalQty) },
-            { key: "neighborhood", value: neighborhood || "" },
+            { key: "Fuente", value: "ReleasitNuevo COD Form" },
+            { key: "Método de pago", value: "Contra entrega (COD)" },
+            { key: "Teléfono confirmación", value: phoneConfirm || "" },
+            { key: "Barrio", value: neighborhood || "" },
+            { key: "Bundle", value: `${totalQty} unidad(es)` },
+            { key: "Total bundle", value: `$${bundlePrice.toLocaleString('es-CO')} COP` },
+            { key: "IP", value: clientIp },
           ],
         },
         options: {
