@@ -884,17 +884,16 @@
       console.log('[RN] Result:', JSON.stringify(result));
 
       if (result.success) {
-        // Show success
-        document.getElementById('rn-cart-section').style.display = 'none';
-        document.getElementById('rn-crosssell').style.display = 'none';
-        document.getElementById('rn-savings').style.display = 'none';
-        document.getElementById('rn-pricing').style.display = 'none';
-        document.getElementById('rn-form-section').style.display = 'none';
-        document.getElementById('rn-actions').style.display = 'none';
+        // Show success - hide sections safely
+        ['rn-cart-section', 'rn-crosssell', 'rn-savings', 'rn-pricing', 'rn-form-section', 'rn-actions'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
 
-        document.getElementById('rn-order-name').textContent =
-          'Orden: ' + (result.orderName || result.orderId);
-        document.getElementById('rn-success').style.display = 'block';
+        var orderNameEl = document.getElementById('rn-order-name');
+        if (orderNameEl) orderNameEl.textContent = 'Orden: ' + (result.orderName || result.orderId);
+        var successEl = document.getElementById('rn-success');
+        if (successEl) successEl.style.display = 'block';
 
         // Reset state
         cart = [];
