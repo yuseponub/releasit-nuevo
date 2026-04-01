@@ -204,11 +204,24 @@ async function handleCreateOrder(request: Request, body: any) {
 
     const fullAddress = neighborhood ? `${address}, Barrio: ${neighborhood}` : address;
 
-    const lineItems = resolvedItems.map((item: any) => {
+    // Distribute bundle price across line items
+    const itemPrices = distributePrice(resolvedItems, totalQty);
+
+    const lineItems = resolvedItems.map((item: any, idx: number) => {
       const vid = String(item.variantId);
+      // Price per unit for this line item (total for this item / quantity)
+      const lineTotal = itemPrices[idx];
+      const pricePerUnit = Math.round(lineTotal / item.quantity);
+
       return {
         variantId: vid.startsWith("gid://") ? vid : `gid://shopify/ProductVariant/${vid}`,
         quantity: item.quantity,
+        priceSet: {
+          shopMoney: {
+            amount: String(pricePerUnit),
+            currencyCode: "COP",
+          },
+        },
       };
     });
 

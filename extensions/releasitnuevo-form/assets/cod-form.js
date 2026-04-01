@@ -32,6 +32,7 @@
   let allProducts = [];
   let draftSent = false;
   let draftTimeout = null;
+  let orderSubmitting = false;
 
   // Real Shopify variant IDs mapped from config keys
   const REAL_VARIANT_IDS = {
@@ -828,8 +829,10 @@
 
   // Submit order
   async function submitOrder() {
+    if (orderSubmitting) return;
     if (!validateForm()) return;
 
+    orderSubmitting = true;
     const btn = document.getElementById('rn-submit');
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -900,12 +903,14 @@
         draftSent = false;
       } else {
         alert('Error al crear el pedido: ' + (result.error || 'Intenta de nuevo'));
+        orderSubmitting = false;
         btn.disabled = false;
         btn.innerHTML = originalText;
       }
     } catch (e) {
       console.error('[RN] Order submission failed:', e);
       alert('Error: ' + (e.message || 'Error de conexion. Intenta de nuevo.'));
+      orderSubmitting = false;
       btn.disabled = false;
       btn.innerHTML = originalText;
     }
