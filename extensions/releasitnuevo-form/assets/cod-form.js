@@ -33,38 +33,37 @@
   let draftSent = false;
   let draftTimeout = null;
 
-  // Map product config keys to Shopify product title patterns for variant resolution
-  const PRODUCT_TITLE_MAP = {
-    'elixir': 'elixir',
-    'ashwagandha': 'ashwagandha',
-    'magnesio': 'magnesio forte',
-    'magnesio-forte': 'magnesio forte',
-    'melatonina-magnesio': 'melatonina',
+  // Real Shopify variant IDs mapped from config keys
+  const REAL_VARIANT_IDS = {
+    'elixir': '47357476634860',
+    'ashwagandha': '47357499277548',
+    'magnesio': '47357496197356',
+    'magnesio-forte': '47357496197356',
+    'melatonina-magnesio': '47357476634860',
   };
 
-  // Resolve a real Shopify variant ID from allProducts by matching title
+  // Resolve a real Shopify variant ID
   function resolveVariantId(item) {
     // If it already looks like a numeric Shopify ID, use it
     if (/^\d+$/.test(item.variantId)) return item.variantId;
 
-    // Try to find matching product in allProducts by title
-    const titleLower = (item.title || '').toLowerCase();
-    const configKey = (item.variantId || '').split('-variant-')[0].split('-')[0];
+    // Extract config key from fake variant ID (e.g., "elixir-variant-1" → "elixir")
+    const vid = item.variantId || '';
+    const configKey = vid.split('-variant-')[0]; // handles "elixir-variant-1"
+    if (REAL_VARIANT_IDS[configKey]) return REAL_VARIANT_IDS[configKey];
 
+    // Try full ID (e.g., "ashwagandha-1" → "ashwagandha")
+    const baseKey = vid.replace(/-\d+$/, ''); // handles "ashwagandha-1"
+    if (REAL_VARIANT_IDS[baseKey]) return REAL_VARIANT_IDS[baseKey];
+
+    // Fallback: search in allProducts
     for (const prod of allProducts) {
       const prodTitle = (prod.title || '').toLowerCase();
-      // Match by config key pattern
-      const pattern = PRODUCT_TITLE_MAP[configKey] || configKey;
-      if (prodTitle.includes(pattern)) {
-        return prod.variantId;
-      }
-      // Also try matching by item title
-      if (titleLower && prodTitle.includes(titleLower.split(' x')[0].trim().toLowerCase())) {
+      if (prodTitle.includes(configKey) || prodTitle.includes(baseKey)) {
         return prod.variantId;
       }
     }
 
-    // Return original as last resort
     return item.variantId;
   }
 

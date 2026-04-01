@@ -383,58 +383,35 @@ async function handleCreateDraft(request: Request, body: any) {
 
 // ===================== HELPERS =====================
 
-async function resolveVariantIds(admin: any, items: any[]) {
-  const needsResolution = items.some((i: any) => !/^\d+$/.test(String(i.variantId)));
-  if (!needsResolution) return items;
+// Hardcoded variant ID map (config key → real Shopify variant ID)
+const VARIANT_ID_MAP: Record<string, string> = {
+  "elixir": "47357476634860",
+  "ashwagandha": "47357499277548",
+  "magnesio": "47357496197356",
+  "magnesio-forte": "47357496197356",
+  "melatonina-magnesio": "47357476634860",
+  "melatonina": "47357476634860",
+};
 
-  try {
-    const response = await admin.graphql(`
-      query {
-        products(first: 20, query: "status:active") {
-          edges {
-            node {
-              id
-              title
-              variants(first: 5) {
-                edges { node { id, title } }
-              }
-            }
-          }
-        }
-      }
-    `);
+function resolveVariantIds(admin: any, items: any[]) {
+  return items.map((item: any) => {
+    const vid = String(item.variantId || "");
 
-    const data = await response.json();
-    const products = data.data.products.edges.map((e: any) => ({
-      title: e.node.title.toLowerCase(),
-      variantId: e.node.variants.edges[0]?.node.id || "",
-    }));
+    // Already a real numeric ID
+    if (/^\d+$/.test(vid)) return item;
+    // Already a GID
+    if (vid.startsWith("gid://")) return item;
 
-    console.log("[ResolveVariants] Products:", products.map((p: any) => p.title));
+    // Extract config key: "elixir-variant-1" → "elixir", "ashwagandha-1" → "ashwagandha"
+    const configKey = vid.split("-variant-")[0].replace(/-\d+$/, "");
+    const realId = VARIANT_ID_MAP[configKey];
 
-    return items.map((item: any) => {
-      const vid = String(item.variantId);
-      if (/^\d+$/.test(vid)) return item;
+    if (realId) {
+      console.log(`[Resolve] "${item.title}" (${vid}) → ${realId}`);
+      return { ...item, variantId: realId };
+    }
 
-      const itemTitle = (item.title || "").toLowerCase();
-      const keyPart = vid.split("-variant-")[0].replace(/-/g, " ");
-
-      const match = products.find((p: any) =>
-        p.title.includes(keyPart) ||
-        keyPart.includes(p.title.split(" ")[0]) ||
-        itemTitle.includes(p.title.split(" ")[0])
-      );
-
-      if (match) {
-        console.log(`[Resolve] "${item.title}" → ${match.variantId}`);
-        return { ...item, variantId: match.variantId };
-      }
-
-      console.warn(`[Resolve] FAILED: "${item.title}" (${vid})`);
-      return item;
-    });
-  } catch (e) {
-    console.error("[ResolveVariants] Error:", e);
-    return items;
-  }
+    console.warn(`[Resolve] No mapping for: "${item.title}" (${vid})`);
+    return item;
+  });
 }
