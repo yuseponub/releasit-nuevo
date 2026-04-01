@@ -1,27 +1,79 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { authenticate } from "../shopify.server";
+import { unauthenticated } from "../shopify.server";
 import db from "../db.server";
 import { calcBundlePrice, distributePrice } from "../models/bundle-pricing.server";
+import crypto from "crypto";
 
 /**
  * App Proxy handler (catch-all route).
- * Shopify routes /apps/releasitnuevo/* → /api/proxy/*
- * The `authenticate.public.appProxy` validates the request signature.
+ * Uses manual HMAC verification + unauthenticated.admin for API access.
  */
 
-// Helper to extract the sub-path from the proxy request
 function getProxyPath(request: Request): string {
   const url = new URL(request.url);
   return url.searchParams.get("path") || url.pathname;
 }
 
-// GET requests
+// Verify Shopify app proxy HMAC signature
+function verifyProxySignature(query: URLSearchParams): boolean {
+  const signature = query.get("signature");
+  if (!signature) return false;
+
+  const secret = process.env.SHOPIFY_API_SECRET || "";
+  if (!secret) return false;
+
+  const params: string[] = [];
+  query.forEach((value, key) => {
+    if (key !== "signature") {
+      params.push(`${key}=${value}`);
+    }
+  });
+  params.sort();
+  const message = params.join("");
+
+  const computed = crypto
+    .createHmac("sha256", secret)
+    .update(message)
+    .digest("hex");
+
+  return crypto.timingSafeEqual(
+    Buffer.from(computed, "hex"),
+    Buffer.from(signature, "hex")
+  );
+}
+
+// Get admin API using existing session
+async function getAdmin(shop: string) {
+  const { admin } = await unauthenticated.admin(shop);
+  return admin;
+}
+
+// Authenticate proxy request: verify HMAC + get admin
+async function authProxy(request: Request) {
+  const url = new URL(request.url);
+  const shop = url.searchParams.get("shop");
+
+  if (!shop) {
+    throw new Error("Missing shop parameter");
+  }
+
+  const valid = verifyProxySignature(url.searchParams);
+  if (!valid) {
+    console.error("[authProxy] Invalid signature for shop:", shop);
+    throw new Error("Invalid signature");
+  }
+
+  const admin = await getAdmin(shop);
+  return { admin, shop };
+}
+
+// ===================== LOADER (GET) =====================
+
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const path = getProxyPath(request);
   console.log("[AppProxy GET]", path);
 
-  // Ping/test endpoint - no auth needed
   if (path.includes("ping")) {
     return json({ ok: true, timestamp: Date.now() });
   }
@@ -33,70 +85,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   return json({ error: "Not found", path }, { status: 404 });
 };
 
-// POST requests
+// ===================== ACTION (POST) =====================
+
 export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     const url = new URL(request.url);
     const path = url.searchParams.get("path") || url.pathname;
-    console.log("[AppProxy POST] path:", path);
+    console.log("[AppProxy POST]", path);
 
-    // Clone request BEFORE reading body — clone keeps body intact for auth
-    const authRequest = request.clone();
-
-    // Now read body from original
-    let bodyText = "";
-    try {
-      bodyText = await request.text();
-    } catch (e: any) {
-      console.error("[AppProxy] Failed to read body:", e.message);
-    }
-
-    // Debug endpoints
-    if (path.includes("test-post")) {
-      let parsedBody: any = null;
-      try { parsedBody = JSON.parse(bodyText); } catch { parsedBody = "not-json"; }
-      return json({
-        ok: true, path,
-        contentType: request.headers.get("content-type"),
-        bodyLength: bodyText.length,
-        bodyPreview: bodyText.substring(0, 500),
-        parsedBody: typeof parsedBody === "object" ? "valid-json" : parsedBody,
-        queryParams: Object.fromEntries(url.searchParams),
-      });
-    }
-
-    if (path.includes("test-auth")) {
-      // Test 1: clone (current approach)
-      let test1: any = { method: "clone" };
-      try {
-        const { admin, session } = await authenticate.public.appProxy(authRequest);
-        test1 = { ...test1, ok: true, shop: session?.shop, hasAdmin: !!admin };
-      } catch (e: any) {
-        if (e instanceof Response) {
-          test1 = { ...test1, ok: false, status: e.status };
-        } else {
-          test1 = { ...test1, ok: false, error: e.message };
-        }
-      }
-
-      // Test 2: GET request with same URL (signature is in query params)
-      let test2: any = { method: "GET-trick" };
-      try {
-        const getReq = new Request(url.toString(), { method: "GET", headers: request.headers });
-        const { admin, session } = await authenticate.public.appProxy(getReq);
-        test2 = { ...test2, ok: true, shop: session?.shop, hasAdmin: !!admin };
-      } catch (e: any) {
-        if (e instanceof Response) {
-          test2 = { ...test2, ok: false, status: e.status };
-        } else {
-          test2 = { ...test2, ok: false, error: e.message };
-        }
-      }
-
-      return json({ test1, test2 });
-    }
-
-    // Parse body (JSON or form-encoded)
+    // Read body
+    const bodyText = await request.text();
     let body: any = {};
     if (bodyText) {
       try {
@@ -107,91 +105,41 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       }
     }
 
+    // Debug endpoint
+    if (path.includes("test-post")) {
+      return json({ ok: true, path, bodyLength: bodyText.length });
+    }
+
+    // Test auth with new manual verification
+    if (path.includes("test-auth")) {
+      try {
+        const { admin, shop } = await authProxy(request);
+        return json({ ok: true, shop, hasAdmin: !!admin });
+      } catch (e: any) {
+        return json({ ok: false, error: e.message });
+      }
+    }
+
     if (path.includes("create-order")) {
-      return await handleCreateOrder(authRequest, body);
+      return await handleCreateOrder(request, body);
     }
 
     if (path.includes("create-draft")) {
-      return await handleCreateDraft(authRequest, body);
+      return await handleCreateDraft(request, body);
     }
 
     return json({ error: "Not found", path }, { status: 404 });
   } catch (e: any) {
     console.error("[AppProxy] FATAL:", e.message, e.stack);
-    return json({ success: false, error: "Error fatal: " + (e.message || "desconocido") }, { status: 500 });
+    return json({ success: false, error: "Error: " + (e.message || "desconocido") }, { status: 500 });
   }
 };
 
-// ----- Helper: Resolve variant IDs by title if non-numeric -----
-async function resolveVariantIds(admin: any, items: any[]) {
-  const needsResolution = items.some((i: any) => !/^\d+$/.test(String(i.variantId)));
-  if (!needsResolution) return items;
+// ===================== HANDLERS =====================
 
-  try {
-    const response = await admin.graphql(`
-      query {
-        products(first: 20, query: "status:active") {
-          edges {
-            node {
-              id
-              title
-              variants(first: 5) {
-                edges {
-                  node {
-                    id
-                    title
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    `);
-
-    const data = await response.json();
-    const products = data.data.products.edges.map((e: any) => ({
-      title: e.node.title.toLowerCase(),
-      variantId: e.node.variants.edges[0]?.node.id || "",
-    }));
-
-    console.log("[ResolveVariants] Available products:", products.map((p: any) => p.title));
-
-    return items.map((item: any) => {
-      const vid = String(item.variantId);
-      if (/^\d+$/.test(vid)) return item;
-
-      const itemTitle = (item.title || "").toLowerCase();
-      const keyPart = vid.split("-variant-")[0].replace(/-/g, " ");
-
-      const match = products.find((p: any) =>
-        p.title.includes(keyPart) ||
-        keyPart.includes(p.title.split(" ")[0]) ||
-        itemTitle.includes(p.title.split(" ")[0])
-      );
-
-      if (match) {
-        console.log(`[ResolveVariants] "${item.title}" → ${match.variantId}`);
-        return { ...item, variantId: match.variantId };
-      }
-
-      console.warn(`[ResolveVariants] FAILED for: "${item.title}" (${vid})`);
-      return item;
-    });
-  } catch (e) {
-    console.error("[ResolveVariants] Error:", e);
-    return items;
-  }
-}
-
-// ----- Handler: Get Products -----
 async function handleGetProducts(request: Request) {
   try {
-    const { admin } = await authenticate.public.appProxy(request);
-
-    if (!admin) {
-      return json({ products: [] });
-    }
+    const { admin } = await authProxy(request);
 
     const response = await admin.graphql(`
       query {
@@ -200,15 +148,10 @@ async function handleGetProducts(request: Request) {
             node {
               id
               title
-              featuredImage {
-                url
-              }
+              featuredImage { url }
               variants(first: 1) {
                 edges {
-                  node {
-                    id
-                    price
-                  }
+                  node { id, price }
                 }
               }
             }
@@ -231,32 +174,24 @@ async function handleGetProducts(request: Request) {
     });
 
     return json({ products });
-  } catch (e) {
-    console.error("[GetProducts] Error:", e);
-    return json({ products: [] });
+  } catch (e: any) {
+    console.error("[GetProducts] Error:", e.message);
+    return json({ products: [], error: e.message });
   }
 }
 
-// ----- Handler: Create Order -----
 async function handleCreateOrder(request: Request, body: any) {
   try {
-    const { admin, session } = await authenticate.public.appProxy(request);
-    const shop = session?.shop || "unknown";
+    const { admin, shop } = await authProxy(request);
     console.log("[CreateOrder] Shop:", shop);
-
-    if (!admin) {
-      return json({ success: false, error: "No autenticado" }, { status: 401 });
-    }
 
     const {
       firstName, lastName, phone, phoneConfirm,
       email, address, neighborhood, department, city,
-      items, bundleSize, total,
+      items,
     } = body;
 
-    // Validate required fields
     if (!firstName || !lastName || !phone || !address || !department || !city || !items?.length) {
-      console.error("[CreateOrder] Missing fields:", { firstName: !!firstName, lastName: !!lastName, phone: !!phone, address: !!address, department: !!department, city: !!city, items: items?.length });
       return json({ success: false, error: "Faltan campos requeridos" }, { status: 400 });
     }
 
@@ -265,11 +200,9 @@ async function handleCreateOrder(request: Request, body: any) {
 
     // Resolve variant IDs
     const resolvedItems = await resolveVariantIds(admin, items);
-    console.log("[CreateOrder] Resolved items:", resolvedItems.map((i: any) => ({ title: i.title, variantId: i.variantId })));
+    console.log("[CreateOrder] Resolved:", resolvedItems.map((i: any) => ({ t: i.title, v: i.variantId })));
 
-    const fullAddress = neighborhood
-      ? `${address}, Barrio: ${neighborhood}`
-      : address;
+    const fullAddress = neighborhood ? `${address}, Barrio: ${neighborhood}` : address;
 
     const lineItems = resolvedItems.map((item: any) => {
       const vid = String(item.variantId);
@@ -279,19 +212,11 @@ async function handleCreateOrder(request: Request, body: any) {
       };
     });
 
-    console.log("[CreateOrder] Line items:", JSON.stringify(lineItems));
-
     const orderResponse = await admin.graphql(`
       mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
         orderCreate(order: $order, options: $options) {
-          order {
-            id
-            name
-          }
-          userErrors {
-            field
-            message
-          }
+          order { id, name }
+          userErrors { field, message }
         }
       }
     `, {
@@ -299,30 +224,20 @@ async function handleCreateOrder(request: Request, body: any) {
         order: {
           lineItems,
           shippingAddress: {
-            firstName,
-            lastName,
-            phone,
+            firstName, lastName, phone,
             address1: fullAddress,
-            city,
-            province: department,
-            country: "Colombia",
-            countryCode: "CO",
-            zip: "000000",
+            city, province: department,
+            country: "Colombia", countryCode: "CO", zip: "000000",
           },
           billingAddress: {
-            firstName,
-            lastName,
-            phone,
+            firstName, lastName, phone,
             address1: fullAddress,
-            city,
-            province: department,
-            country: "Colombia",
-            countryCode: "CO",
-            zip: "000000",
+            city, province: department,
+            country: "Colombia", countryCode: "CO", zip: "000000",
           },
           email: email || undefined,
           phone,
-          note: `Pedido COD - ReleasitNuevo\nBundle: ${totalQty} productos\nBarrio: ${neighborhood || 'N/A'}\nTelefono confirmado: ${phoneConfirm || 'N/A'}`,
+          note: `Pedido COD - ReleasitNuevo\nBundle: ${totalQty} productos\nBarrio: ${neighborhood || 'N/A'}\nTel confirmado: ${phoneConfirm || 'N/A'}`,
           tags: ["releasitnuevo", "cod", `bundle-${totalQty}`],
           financialStatus: "PENDING",
           customAttributes: [
@@ -338,11 +253,10 @@ async function handleCreateOrder(request: Request, body: any) {
     });
 
     const orderData = await orderResponse.json();
-    console.log("[CreateOrder] Shopify response:", JSON.stringify(orderData));
+    console.log("[CreateOrder] Response:", JSON.stringify(orderData));
     const orderResult = orderData.data?.orderCreate;
 
     if (orderResult?.userErrors?.length > 0) {
-      console.error("[CreateOrder] User errors:", orderResult.userErrors);
       return json({
         success: false,
         error: orderResult.userErrors.map((e: any) => e.message).join(", "),
@@ -352,85 +266,49 @@ async function handleCreateOrder(request: Request, body: any) {
     const orderId = orderResult?.order?.id || "";
     const orderName = orderResult?.order?.name || "";
 
-    // Save to local database
+    // Save to DB (non-fatal)
     try {
       await db.codOrder.create({
         data: {
-          shop,
-          shopifyOrderId: orderId,
-          shopifyOrderName: orderName,
-          firstName,
-          lastName,
-          phone,
-          phoneConfirm,
-          email,
-          address: fullAddress,
-          neighborhood,
-          department,
-          city,
+          shop, shopifyOrderId: orderId, shopifyOrderName: orderName,
+          firstName, lastName, phone, phoneConfirm, email,
+          address: fullAddress, neighborhood, department, city,
           items: JSON.stringify(items),
-          subtotal: bundlePrice,
-          total: bundlePrice,
-          bundleSize: totalQty,
-          status: "pending",
+          subtotal: bundlePrice, total: bundlePrice,
+          bundleSize: totalQty, status: "pending",
         },
       });
     } catch (dbErr: any) {
-      console.error("[CreateOrder] DB save error (non-fatal):", dbErr.message);
+      console.error("[CreateOrder] DB error (non-fatal):", dbErr.message);
     }
 
-    // Log submission
     try {
       await db.formSubmission.create({
         data: {
-          shop,
-          type: "COD_ORDER",
+          shop, type: "COD_ORDER",
           data: JSON.stringify({ ...body, shopifyOrderId: orderId }),
           shopifyOrderId: orderId,
         },
       });
-    } catch (_) { /* ignore */ }
+    } catch (_) {}
 
     return json({ success: true, orderId, orderName });
   } catch (e: any) {
     console.error("[CreateOrder] FATAL:", e.message, e.stack);
-
-    try {
-      await db.formSubmission.create({
-        data: {
-          shop: "unknown",
-          type: "COD_ORDER",
-          data: JSON.stringify(body),
-          success: false,
-          error: e.message,
-        },
-      });
-    } catch (_) { /* ignore */ }
-
-    return json({ success: false, error: "Error del servidor: " + e.message }, { status: 500 });
+    return json({ success: false, error: "Error: " + e.message }, { status: 500 });
   }
 }
 
-// ----- Handler: Create Draft Order (Abandonment) -----
 async function handleCreateDraft(request: Request, body: any) {
   try {
-    const { admin, session } = await authenticate.public.appProxy(request);
-    const shop = session?.shop || "unknown";
-
-    if (!admin) {
-      return json({ success: false, error: "No autenticado" }, { status: 401 });
-    }
+    const { admin, shop } = await authProxy(request);
 
     const { firstName, lastName, phone, items } = body;
-
     if (!firstName || !phone) {
       return json({ success: false, error: "Nombre y telefono requeridos" }, { status: 400 });
     }
 
-    const resolvedItems = items?.length > 0
-      ? await resolveVariantIds(admin, items)
-      : [];
-
+    const resolvedItems = items?.length > 0 ? await resolveVariantIds(admin, items) : [];
     const lineItems = resolvedItems.length > 0
       ? resolvedItems.map((item: any) => {
           const vid = String(item.variantId);
@@ -444,35 +322,23 @@ async function handleCreateDraft(request: Request, body: any) {
     const draftResponse = await admin.graphql(`
       mutation draftOrderCreate($input: DraftOrderInput!) {
         draftOrderCreate(input: $input) {
-          draftOrder {
-            id
-          }
-          userErrors {
-            field
-            message
-          }
+          draftOrder { id }
+          userErrors { field, message }
         }
       }
     `, {
       variables: {
         input: {
           lineItems: lineItems.length > 0 ? lineItems : undefined,
-          note: `Abandono parcial - ReleasitNuevo\nNombre: ${firstName} ${lastName || ''}\nTelefono: ${phone}`,
+          note: `Abandono parcial - ReleasitNuevo\nNombre: ${firstName} ${lastName || ''}\nTel: ${phone}`,
           tags: ["releasitnuevo", "abandono"],
           shippingAddress: {
-            firstName,
-            lastName: lastName || ".",
-            phone,
-            address1: "Pendiente",
-            city: "Pendiente",
-            province: "Pendiente",
-            country: "Colombia",
-            countryCode: "CO",
-            zip: "000000",
+            firstName, lastName: lastName || ".",
+            phone, address1: "Pendiente",
+            city: "Pendiente", province: "Pendiente",
+            country: "Colombia", countryCode: "CO", zip: "000000",
           },
-          customAttributes: [
-            { key: "source", value: "releasitnuevo-abandono" },
-          ],
+          customAttributes: [{ key: "source", value: "releasitnuevo-abandono" }],
         },
       },
     });
@@ -481,7 +347,6 @@ async function handleCreateDraft(request: Request, body: any) {
     const draftResult = draftData.data?.draftOrderCreate;
 
     if (draftResult?.userErrors?.length > 0) {
-      console.error("[CreateDraft] User errors:", draftResult.userErrors);
       return json({
         success: false,
         error: draftResult.userErrors.map((e: any) => e.message).join(", "),
@@ -493,33 +358,83 @@ async function handleCreateDraft(request: Request, body: any) {
     try {
       await db.draftOrder.create({
         data: {
-          shop,
-          shopifyDraftOrderId: draftOrderId,
-          firstName,
-          lastName,
-          phone,
+          shop, shopifyDraftOrderId: draftOrderId,
+          firstName, lastName, phone,
           items: items ? JSON.stringify(items) : null,
           status: "open",
         },
       });
     } catch (dbErr: any) {
-      console.error("[CreateDraft] DB error (non-fatal):", dbErr.message);
+      console.error("[CreateDraft] DB error:", dbErr.message);
     }
 
     try {
       await db.formSubmission.create({
-        data: {
-          shop,
-          type: "DRAFT_ORDER",
-          data: JSON.stringify(body),
-          shopifyOrderId: draftOrderId,
-        },
+        data: { shop, type: "DRAFT_ORDER", data: JSON.stringify(body), shopifyOrderId: draftOrderId },
       });
-    } catch (_) { /* ignore */ }
+    } catch (_) {}
 
     return json({ success: true, draftOrderId });
   } catch (e: any) {
     console.error("[CreateDraft] FATAL:", e.message, e.stack);
-    return json({ success: false, error: "Error del servidor: " + e.message }, { status: 500 });
+    return json({ success: false, error: "Error: " + e.message }, { status: 500 });
+  }
+}
+
+// ===================== HELPERS =====================
+
+async function resolveVariantIds(admin: any, items: any[]) {
+  const needsResolution = items.some((i: any) => !/^\d+$/.test(String(i.variantId)));
+  if (!needsResolution) return items;
+
+  try {
+    const response = await admin.graphql(`
+      query {
+        products(first: 20, query: "status:active") {
+          edges {
+            node {
+              id
+              title
+              variants(first: 5) {
+                edges { node { id, title } }
+              }
+            }
+          }
+        }
+      }
+    `);
+
+    const data = await response.json();
+    const products = data.data.products.edges.map((e: any) => ({
+      title: e.node.title.toLowerCase(),
+      variantId: e.node.variants.edges[0]?.node.id || "",
+    }));
+
+    console.log("[ResolveVariants] Products:", products.map((p: any) => p.title));
+
+    return items.map((item: any) => {
+      const vid = String(item.variantId);
+      if (/^\d+$/.test(vid)) return item;
+
+      const itemTitle = (item.title || "").toLowerCase();
+      const keyPart = vid.split("-variant-")[0].replace(/-/g, " ");
+
+      const match = products.find((p: any) =>
+        p.title.includes(keyPart) ||
+        keyPart.includes(p.title.split(" ")[0]) ||
+        itemTitle.includes(p.title.split(" ")[0])
+      );
+
+      if (match) {
+        console.log(`[Resolve] "${item.title}" → ${match.variantId}`);
+        return { ...item, variantId: match.variantId };
+      }
+
+      console.warn(`[Resolve] FAILED: "${item.title}" (${vid})`);
+      return item;
+    });
+  } catch (e) {
+    console.error("[ResolveVariants] Error:", e);
+    return items;
   }
 }
