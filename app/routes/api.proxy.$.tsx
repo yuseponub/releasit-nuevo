@@ -16,26 +16,6 @@ function getProxyPath(request: Request): string {
   return url.searchParams.get("path") || url.pathname;
 }
 
-// Safely parse request body (handles JSON, form-encoded, or empty)
-async function parseBody(request: Request): Promise<any> {
-  try {
-    const clone = request.clone();
-    const text = await clone.text();
-    if (!text) return {};
-    try {
-      return JSON.parse(text);
-    } catch {
-      // Try form-encoded
-      const params = new URLSearchParams(text);
-      const obj: any = {};
-      params.forEach((v, k) => { obj[k] = v; });
-      return obj;
-    }
-  } catch {
-    return {};
-  }
-}
-
 // GET requests
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const path = getProxyPath(request);
@@ -55,31 +35,45 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 // POST requests
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const path = getProxyPath(request);
-  console.log("[AppProxy POST]", path);
-
-  let body: any;
   try {
-    body = await parseBody(request);
+    const path = getProxyPath(request);
+    console.log("[AppProxy POST]", path);
+
+    // Read body text ONCE from original request
+    const bodyText = await request.text();
+    console.log("[AppProxy] Body length:", bodyText.length);
+
+    // Parse body (JSON or form-encoded)
+    let body: any = {};
+    if (bodyText) {
+      try {
+        body = JSON.parse(bodyText);
+      } catch {
+        const params = new URLSearchParams(bodyText);
+        body = Object.fromEntries(params);
+      }
+    }
     console.log("[AppProxy] Body keys:", Object.keys(body));
-  } catch (e: any) {
-    console.error("[AppProxy] Body parse error:", e.message);
-    return json({ success: false, error: "No se pudo leer el cuerpo de la peticion" }, { status: 400 });
-  }
 
-  try {
+    // Rebuild request with body for authenticate (it may need to read it)
+    const authRequest = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body: bodyText || undefined,
+    });
+
     if (path.includes("create-order")) {
-      return await handleCreateOrder(request, body);
+      return await handleCreateOrder(authRequest, body);
     }
 
     if (path.includes("create-draft")) {
-      return await handleCreateDraft(request, body);
+      return await handleCreateDraft(authRequest, body);
     }
 
     return json({ error: "Not found", path }, { status: 404 });
   } catch (e: any) {
-    console.error("[AppProxy] Unhandled error:", e.message, e.stack);
-    return json({ success: false, error: e.message || "Error interno" }, { status: 500 });
+    console.error("[AppProxy] FATAL action error:", e.message, e.stack);
+    return json({ success: false, error: "Error del servidor: " + (e.message || "desconocido") }, { status: 500 });
   }
 };
 
