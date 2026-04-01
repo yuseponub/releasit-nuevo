@@ -361,7 +361,7 @@ async function handleCreateOrder(request: Request, body: any) {
           ],
         },
         options: {
-          inventoryBehaviour: "BYPASS",
+          inventoryBehaviour: "DECREMENT_IGNORING_POLICY",
         },
       },
     });
