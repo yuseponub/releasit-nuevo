@@ -13,3 +13,7 @@ handle = "releasitnuevo-form"
   [[extensions.targeting]]
   module = "./blocks/complementa-carrito.liquid"
   target = "section"
+
+  [[extensions.targeting]]
+  module = "./blocks/whatsapp-button.liquid"
+  target = "head"

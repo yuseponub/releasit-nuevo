@@ -2,7 +2,7 @@
 
 client_id = "42971e68eda54221386b3041bee041e3"
 name = "realamorfx"
-application_url = "https://localhost:3000"
+application_url = "https://releasit-nuevo-production.up.railway.app"
 embedded = true
 
 [build]
@@ -19,7 +19,12 @@ optional_scopes = [ ]
 use_legacy_install_flow = false
 
 [auth]
-redirect_urls = [ "https://localhost:3000/auth/callback" ]
+redirect_urls = [ "https://releasit-nuevo-production.up.railway.app/auth/callback" ]
+
+[app_proxy]
+url = "https://releasit-nuevo-production.up.railway.app/api/proxy"
+subpath = "releasitnuevo"
+prefix = "apps"
 
 [pos]
 embedded = false

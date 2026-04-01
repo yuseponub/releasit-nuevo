@@ -33,6 +33,41 @@
   let draftSent = false;
   let draftTimeout = null;
 
+  // Map product config keys to Shopify product title patterns for variant resolution
+  const PRODUCT_TITLE_MAP = {
+    'elixir': 'elixir',
+    'ashwagandha': 'ashwagandha',
+    'magnesio': 'magnesio forte',
+    'magnesio-forte': 'magnesio forte',
+    'melatonina-magnesio': 'melatonina',
+  };
+
+  // Resolve a real Shopify variant ID from allProducts by matching title
+  function resolveVariantId(item) {
+    // If it already looks like a numeric Shopify ID, use it
+    if (/^\d+$/.test(item.variantId)) return item.variantId;
+
+    // Try to find matching product in allProducts by title
+    const titleLower = (item.title || '').toLowerCase();
+    const configKey = (item.variantId || '').split('-variant-')[0].split('-')[0];
+
+    for (const prod of allProducts) {
+      const prodTitle = (prod.title || '').toLowerCase();
+      // Match by config key pattern
+      const pattern = PRODUCT_TITLE_MAP[configKey] || configKey;
+      if (prodTitle.includes(pattern)) {
+        return prod.variantId;
+      }
+      // Also try matching by item title
+      if (titleLower && prodTitle.includes(titleLower.split(' x')[0].trim().toLowerCase())) {
+        return prod.variantId;
+      }
+    }
+
+    // Return original as last resort
+    return item.variantId;
+  }
+
   // Format COP currency
   function formatCOP(amount) {
     return '$' + amount.toLocaleString('es-CO');
@@ -99,12 +134,80 @@
     renderCart();
   }
 
-  // Variant options for the modal
-  const VARIANT_OPTIONS = [
-    { key: 1, qty: 1, qtyLabel: 'X1', label: 'ELIXIR DEL SUEÑO', badgeColor: '#0E8C7B', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28_200x.jpg?v=1774672087' },
-    { key: 2, qty: 2, qtyLabel: 'X2', label: 'ELIXIR DEL SUEÑO', badgeColor: '#2DD264', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_21_30575912-a33d-49a2-bf0b-30fe508eca1f_200x.jpg?v=1774568076' },
-    { key: 3, qty: 3, qtyLabel: 'X3', label: 'ELIXIR DEL SUEÑO', badgeColor: '#E2231A', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_19_7e31291b-2bb9-431e-81a7-d20b858dac5b_200x.jpg?v=1774568076' },
-  ];
+  // Product configurations
+  const PRODUCT_CONFIGS = {
+    elixir: {
+      label: 'ELIXIR DEL SUEÑO',
+      variants: [
+        { key: 1, qty: 1, qtyLabel: 'X1', label: 'ELIXIR DEL SUEÑO', badgeColor: '#0E8C7B', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_28_200x.jpg?v=1774672087' },
+        { key: 2, qty: 2, qtyLabel: 'X2', label: 'ELIXIR DEL SUEÑO', badgeColor: '#2DD264', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_21_30575912-a33d-49a2-bf0b-30fe508eca1f_200x.jpg?v=1774568076' },
+        { key: 3, qty: 3, qtyLabel: 'X3', label: 'ELIXIR DEL SUEÑO', badgeColor: '#E2231A', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_19_7e31291b-2bb9-431e-81a7-d20b858dac5b_200x.jpg?v=1774568076' },
+      ],
+      upsells: [
+        { id: 'ashwagandha', variantId: 'ashwagandha-1', title: 'KSM-66 ASHWAGANDHA', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221', price: 49900, comparePrice: 89900, bg: '#FFF1D5', border: '#AE3B04', benefits: '- Estrés<br>+ Calma', titleClass: 'rn-upsell-title-orange', btnClass: 'rn-upsell-btn-orange', cardClass: 'rn-upsell-dark' },
+        { id: 'magnesio-forte', variantId: 'magnesio-forte-1', title: 'MAGNESIO FORTE', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235', price: 49900, comparePrice: 89900, bg: '#FCEAED', border: '#343D5F', benefits: '+ Bisglicinato<br>+ Taurato<br>Relajación total', titleClass: 'rn-upsell-title-blue', btnClass: 'rn-upsell-btn-blue', cardClass: 'rn-upsell-light' },
+      ],
+    },
+    magnesio: {
+      label: 'MAGNESIO FORTE',
+      variants: [
+        { key: 1, qty: 1, qtyLabel: 'X1', label: 'MAGNESIO FORTE', badgeColor: '#0E8C7B', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774807113' },
+        { key: 2, qty: 2, qtyLabel: 'X2', label: 'MAGNESIO FORTE', badgeColor: '#2DD264', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Gemini_Generated_Image_n5f2cvn5f2cvn5f2.png?v=1774807113' },
+        { key: 3, qty: 3, qtyLabel: 'X3', label: 'MAGNESIO FORTE', badgeColor: '#E2231A', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Gemini_Generated_Image_wn1q6gwn1q6gwn1q_1.png?v=1774807040' },
+      ],
+      upsells: [
+        { id: 'ashwagandha', variantId: 'ashwagandha-1', title: 'KSM-66 ASHWAGANDHA', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221', price: 49900, comparePrice: 89900, bg: '#FFF1D5', border: '#AE3B04', benefits: '- Estrés<br>+ Calma', titleClass: 'rn-upsell-title-orange', btnClass: 'rn-upsell-btn-orange', cardClass: 'rn-upsell-dark' },
+        { id: 'melatonina-magnesio', variantId: 'melatonina-magnesio-1', title: 'MELATONINA+MAGNESIO', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Texto_del_parrafo_20.jpg?v=1774808896', price: 49900, comparePrice: 89900, bg: '#E8F5F2', border: '#2D9B83', benefits: 'Regula tu ciclo de sueño<br>Solución natural al insomnio', titleClass: 'rn-upsell-title-green', btnClass: 'rn-upsell-btn-green', cardClass: 'rn-upsell-green', smallTitle: true },
+      ],
+    },
+    ashwagandha: {
+      label: 'KSM-66 ASHWAGANDHA',
+      variants: [
+        { key: 1, qty: 1, qtyLabel: 'X1', label: 'KSM-66 ASHWAGANDHA', badgeColor: '#0E8C7B', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221' },
+        { key: 2, qty: 2, qtyLabel: 'X2', label: 'KSM-66 ASHWAGANDHA', badgeColor: '#2DD264', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_33.jpg?v=1774816478' },
+        { key: 3, qty: 3, qtyLabel: 'X3', label: 'KSM-66 ASHWAGANDHA', badgeColor: '#E2231A', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_35.jpg?v=1774821848' },
+      ],
+      upsells: [
+        { id: 'melatonina-magnesio', variantId: 'melatonina-magnesio-1', title: 'MELATONINA+MAGNESIO', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Texto_del_parrafo_20.jpg?v=1774808896', price: 49900, comparePrice: 89900, bg: '#E8F5F2', border: '#2D9B83', benefits: 'Regula tu ciclo de sueño<br>Solución natural al insomnio', titleClass: 'rn-upsell-title-green', btnClass: 'rn-upsell-btn-green', cardClass: 'rn-upsell-green', smallTitle: true },
+        { id: 'magnesio-forte', variantId: 'magnesio-forte-1', title: 'MAGNESIO FORTE', image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235', price: 49900, comparePrice: 89900, bg: '#FCEAED', border: '#343D5F', benefits: '+ Bisglicinato<br>+ Taurato<br>Relajación total', titleClass: 'rn-upsell-title-blue', btnClass: 'rn-upsell-btn-blue', cardClass: 'rn-upsell-light' },
+      ],
+    },
+  };
+
+  // Active product config key
+  let activeProduct = 'elixir';
+
+  // Helper to add an upsell product as extra
+  function addUpsellExtra(upsellId) {
+    if (extraProducts.find(ep => ep.id === upsellId)) return;
+    // Search across all product configs for the upsell
+    for (const config of Object.values(PRODUCT_CONFIGS)) {
+      const u = config.upsells.find(up => up.id === upsellId);
+      if (u) {
+        extraProducts.push({
+          id: u.id, variantId: u.variantId, title: u.title, image: u.image,
+          price: u.price, comparePrice: u.comparePrice, bg: u.bg,
+          badge: formatCOP(u.comparePrice - u.price) + ' OFF',
+        });
+        return;
+      }
+    }
+  }
+
+  // Helper to get current config
+  function getConfig() { return PRODUCT_CONFIGS[activeProduct]; }
+  function getVariantOptions() { return getConfig().variants; }
+
+  // Detect which product page we're on by scanning for #rn-open-* links
+  function detectPageProduct() {
+    const openAsh = document.querySelector('a[href*="#rn-open-ash"], button[href*="#rn-open-ash"]');
+    if (openAsh) return 'ashwagandha';
+    const openMag = document.querySelector('a[href*="#rn-open-mag"], button[href*="#rn-open-mag"]');
+    if (openMag) return 'magnesio';
+    const openCod = document.querySelector('a[href*="#rn-open-cod"], button[href*="#rn-open-cod"]');
+    if (openCod) return 'elixir';
+    return activeProduct; // fallback to current
+  }
 
   // Get compare-at prices for savings calculation
   const COMPARE_PRICES = { 1: 120000, 2: 240000, 3: 360000 };
@@ -122,6 +225,7 @@
       <div class="rn-modal-wrapper">
         <button class="rn-modal-close" id="rn-close" aria-label="Cerrar">&times;</button>
       <div class="rn-modal" id="rn-modal">
+        <div class="rn-modal-content">
         <img class="rn-banner" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/ALIADO_1_CONTRA_TU_INSOMNIO.jpg?v=1774669037" alt="Somnio - Aliado #1 contra tu insomnio">
         <div class="rn-header">
           <h2>🎉FELICITACIONES POR APROVECHAR EL DCTO! 🎉</h2>
@@ -159,28 +263,7 @@
           <p class="rn-upsell-header-title">POTENCIA TU DESCANSO</p>
           <p class="rn-upsell-header-sub">$40,000 OFF EN LA COMPRA DE ESTOS PRODUCTOS:</p>
         </div>
-        <div class="rn-upsell-row">
-          <div class="rn-upsell-card rn-upsell-dark">
-            <p class="rn-upsell-title rn-upsell-title-orange">KSM -66 ASHWAGANDHA</p>
-            <div class="rn-upsell-body">
-              <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221" alt="Ashwagandha">
-              <div class="rn-upsell-text">
-                <div class="rn-upsell-benefits">- Estrés<br>+ Calma</div>
-              </div>
-            </div>
-            <button class="rn-upsell-btn rn-upsell-btn-orange" id="rn-add-ashwagandha"><span class="rn-upsell-btn-plus">+</span><div class="rn-upsell-btn-left"><span class="rn-upsell-btn-main">AGREGA</span><span class="rn-upsell-btn-sub">SOLO POR</span></div><span class="rn-upsell-btn-price">$49,900</span></button>
-          </div>
-          <div class="rn-upsell-card rn-upsell-light">
-            <p class="rn-upsell-title rn-upsell-title-blue">MAGNESIO FORTE</p>
-            <div class="rn-upsell-body">
-              <img class="rn-upsell-img" src="https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235" alt="Magnesio Forte">
-              <div class="rn-upsell-text">
-                <div class="rn-upsell-benefits">+ Bisglicinato<br>+ Taurato<br>Relajación total</div>
-              </div>
-            </div>
-            <button class="rn-upsell-btn rn-upsell-btn-blue" id="rn-add-magnesio"><span class="rn-upsell-btn-plus">+</span><div class="rn-upsell-btn-left"><span class="rn-upsell-btn-main">AGREGA</span><span class="rn-upsell-btn-sub">SOLO POR</span></div><span class="rn-upsell-btn-price">$49,900</span></button>
-          </div>
-        </div>
+        <div class="rn-upsell-row" id="rn-upsell-row"></div>
 
         <!-- Form -->
         <div class="rn-form" id="rn-form-section">
@@ -252,6 +335,7 @@
             </div>
           </button>
         </div>
+        </div><!-- end rn-modal-content -->
 
         <!-- Success View -->
         <div class="rn-success-view" id="rn-success" style="display:none;">
@@ -269,13 +353,59 @@
     bindModalEvents();
   }
 
+  // Render upsell cards based on active product config
+  function renderUpsells() {
+    const container = document.getElementById('rn-upsell-row');
+    if (!container) return;
+
+    const config = getConfig();
+    container.innerHTML = config.upsells.map(u => {
+      const isAdded = extraProducts.some(ep => ep.id === u.id);
+      return `
+        <div class="rn-upsell-card ${u.cardClass} ${isAdded ? 'rn-upsell-added' : ''}" data-upsell-id="${u.id}">
+          <div class="rn-upsell-added-overlay"><span>✅ Agregado al carrito</span></div>
+          <p class="rn-upsell-title ${u.titleClass} ${u.smallTitle ? 'rn-upsell-title-sm' : ''}">${u.title}</p>
+          <div class="rn-upsell-body">
+            <img class="rn-upsell-img" src="${u.image}" alt="${u.title}">
+            <div class="rn-upsell-text">
+              <div class="rn-upsell-benefits">${u.benefits}</div>
+            </div>
+          </div>
+          <button class="rn-upsell-btn ${u.btnClass}" data-upsell-add="${u.id}"><span class="rn-upsell-btn-plus">+</span><div class="rn-upsell-btn-left"><span class="rn-upsell-btn-main">AGREGA</span><span class="rn-upsell-btn-sub">SOLO POR</span></div><span class="rn-upsell-btn-price">${formatCOP(u.price)}</span></button>
+        </div>
+      `;
+    }).join('');
+
+    // Bind upsell add buttons
+    container.querySelectorAll('[data-upsell-add]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const upsellId = btn.dataset.upsellAdd;
+        const upsell = config.upsells.find(u => u.id === upsellId);
+        if (upsell && !extraProducts.find(ep => ep.id === upsellId)) {
+          extraProducts.push({
+            id: upsell.id,
+            variantId: upsell.variantId,
+            title: upsell.title,
+            image: upsell.image,
+            price: upsell.price,
+            comparePrice: upsell.comparePrice,
+            bg: upsell.bg,
+            badge: formatCOP(upsell.comparePrice - upsell.price) + ' OFF',
+          });
+          renderVariantCards();
+          updatePricing();
+          renderUpsells();
+        }
+      });
+    });
+  }
+
   // Render variant cards in modal
   function renderVariantCards() {
     const container = document.getElementById('rn-variants');
     if (!container) return;
 
-    // Get product image from Instant.so
-    const activeInstant = document.querySelector('.instant-custom-variant-picker[data-instant-state="active"]');
+    const VARIANT_OPTIONS = getVariantOptions();
     container.innerHTML = VARIANT_OPTIONS.map(v => {
       const isActive = v.qty === selectedModalVariant;
       const price = BUNDLE_PRICING[v.qty] || 0;
@@ -300,6 +430,7 @@
       const hasExtras = isActive && extraProducts.length > 0;
       return `
         <div class="rn-variant-card ${isActive ? 'rn-variant-active' : ''}" data-variant-qty="${v.qty}">
+          ${isActive ? '<span class="rn-variant-tab">CARRITO</span>' : ''}
           <div class="rn-variant-main ${hasExtras ? 'rn-variant-main-compact' : ''}">
             <img class="rn-variant-img" src="${v.image}" alt="${v.label}">
             <div class="rn-variant-info">
@@ -321,11 +452,12 @@
       card.addEventListener('click', () => {
         const qty = parseInt(card.dataset.variantQty);
         selectedModalVariant = qty;
+        const vopt = VARIANT_OPTIONS.find(v => v.qty === qty);
         cart = [{
-          productId: 'instant-product',
-          variantId: 'instant-variant-' + qty,
-          title: VARIANT_OPTIONS.find(v => v.qty === qty).qtyLabel + ' ' + VARIANT_OPTIONS.find(v => v.qty === qty).label,
-          image: VARIANT_OPTIONS.find(v => v.qty === qty).image,
+          productId: activeProduct + '-product',
+          variantId: activeProduct + '-variant-' + qty,
+          title: vopt.qtyLabel + ' ' + vopt.label,
+          image: vopt.image,
           quantity: qty,
         }];
         renderVariantCards();
@@ -340,10 +472,12 @@
         extraProducts = extraProducts.filter(ep => ep.id !== btn.dataset.extraId);
         renderVariantCards();
         updatePricing();
+        renderUpsells();
       });
     });
 
     updatePricing();
+    renderUpsells();
 
     // Show connector line from active card to bottom of variants section
     setTimeout(() => {
@@ -413,6 +547,8 @@
       }
     }
   }
+
+  // Update upsell cards state is now handled by renderUpsells()
 
   // Render cart items
   function renderCart() {
@@ -536,7 +672,12 @@
   }
 
   // Open modal
-  function openModal(product) {
+  function openModal(productKeyOrData) {
+    // Set active product if a key was passed
+    if (typeof productKeyOrData === 'string' && PRODUCT_CONFIGS[productKeyOrData]) {
+      activeProduct = productKeyOrData;
+    }
+
     // Detect Instant.so variant to set initial selection
     const instantVariant = getInstantVariant();
     if (instantVariant) {
@@ -546,10 +687,12 @@
       }
     }
 
+    const VARIANT_OPTIONS = getVariantOptions();
+
     // Update cart based on selected variant
     cart = [{
-      productId: 'instant-product',
-      variantId: 'instant-variant-' + selectedModalVariant,
+      productId: activeProduct + '-product',
+      variantId: activeProduct + '-variant-' + selectedModalVariant,
       title: ((VARIANT_OPTIONS.find(v => v.qty === selectedModalVariant) || {}).qtyLabel || '') + ' ' + ((VARIANT_OPTIONS.find(v => v.qty === selectedModalVariant) || {}).label || 'Producto'),
       image: '',
       quantity: selectedModalVariant,
@@ -558,7 +701,9 @@
     const overlay = document.getElementById('rn-overlay');
     if (overlay) {
       overlay.classList.add('rn-active');
+      overlay.setAttribute('data-product', activeProduct);
       document.body.style.overflow = 'hidden';
+      renderUpsells();
       renderVariantCards();
     }
   }
@@ -569,8 +714,9 @@
     if (overlay) {
       overlay.classList.remove('rn-active');
       document.body.style.overflow = '';
-      // Reset cart so next open picks up current Instant.so variant
+      // Reset cart and extras so next open starts fresh
       cart = [];
+      extraProducts = [];
     }
   }
 
@@ -597,40 +743,7 @@
     firstNameEl.addEventListener('input', checkDraftTrigger);
     phoneEl.addEventListener('input', checkDraftTrigger);
 
-    // Cross-sell add buttons
-    document.getElementById('rn-add-ashwagandha').addEventListener('click', () => {
-      if (!extraProducts.find(ep => ep.id === 'ashwagandha')) {
-        extraProducts.push({
-          id: 'ashwagandha',
-          variantId: 'ashwagandha-1',
-          title: 'ASHWAGANDHA',
-          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221',
-          price: 49900,
-          comparePrice: 89900,
-          bg: '#FFF1D5',
-          badge: '$40,000 OFF',
-        });
-        renderVariantCards();
-        updatePricing();
-      }
-    });
-
-    document.getElementById('rn-add-magnesio').addEventListener('click', () => {
-      if (!extraProducts.find(ep => ep.id === 'magnesio-forte')) {
-        extraProducts.push({
-          id: 'magnesio-forte',
-          variantId: 'magnesio-forte-1',
-          title: 'MAGNESIO FORTE',
-          image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235',
-          price: 49900,
-          comparePrice: 89900,
-          bg: '#FCEAED',
-          badge: '$40,000 OFF',
-        });
-        renderVariantCards();
-        updatePricing();
-      }
-    });
+    // Upsell buttons are now handled dynamically in renderUpsells()
 
     // Submit order
     document.getElementById('rn-submit').addEventListener('click', submitOrder);
@@ -657,7 +770,7 @@
           lastName,
           phone,
           items: cart.map(i => ({
-            variantId: i.variantId,
+            variantId: resolveVariantId(i),
             title: i.title,
             quantity: i.quantity,
           })),
@@ -737,7 +850,7 @@
       department: document.getElementById('rn-department').value,
       city: document.getElementById('rn-city').value.trim(),
       items: cart.map(i => ({
-        variantId: i.variantId,
+        variantId: resolveVariantId(i),
         title: i.title,
         quantity: i.quantity,
       })),
@@ -882,6 +995,176 @@
     return null;
   }
 
+  // ========================================
+  // Inline Product Slider (Product Page)
+  // ========================================
+
+  const SLIDER_PRODUCTS = [
+    {
+      id: 'ashwagandha',
+      variantId: 'ashwagandha-1',
+      title: 'KSM-66 ASHWAGANDHA',
+      subtitle: '90 comprimidos',
+      image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_30.jpg?v=1774718221',
+      price: 49900,
+      comparePrice: 89900,
+      benefits: ['- Estrés', '+ Calma', '+ Enfoque'],
+      accentColor: '#AE3B04',
+      bgColor: '#FFF1D5',
+    },
+    {
+      id: 'magnesio-forte',
+      variantId: 'magnesio-forte-1',
+      title: 'MAGNESIO FORTE',
+      subtitle: '90 comprimidos',
+      image: 'https://cdn.shopify.com/s/files/1/0688/9606/3724/files/Diseno_sin_titulo_29.jpg?v=1774718235',
+      price: 49900,
+      comparePrice: 89900,
+      benefits: ['+ Bisglicinato', '+ Taurato', 'Relajación total'],
+      accentColor: '#343D5F',
+      bgColor: '#FCEAED',
+    },
+  ];
+
+  let sliderCurrentIndex = 0;
+  let touchStartX = 0;
+  let touchEndX = 0;
+
+  function buildVariantPicker() {
+    const container = document.getElementById('rn-variant-picker');
+    if (!container) return;
+    renderSlider(container);
+  }
+
+  function renderSlider(container) {
+    const product = SLIDER_PRODUCTS[sliderCurrentIndex];
+    const savings = product.comparePrice > product.price
+      ? Math.round((1 - product.price / product.comparePrice) * 100)
+      : 0;
+    const discount = product.comparePrice - product.price;
+
+    const dots = SLIDER_PRODUCTS.map((_, i) =>
+      `<span class="rn-slider-dot ${i === sliderCurrentIndex ? 'rn-slider-dot-active' : ''}" data-slide="${i}"></span>`
+    ).join('');
+
+    const tabs = SLIDER_PRODUCTS.map((p, i) =>
+      `<button class="rn-slider-tab ${i === sliderCurrentIndex ? 'rn-slider-tab-active' : ''}" data-slide="${i}" style="${i === sliderCurrentIndex ? 'border-color:' + p.accentColor + '; color:' + p.accentColor : ''}">${p.title}</button>`
+    ).join('');
+
+    container.innerHTML = `
+      <div class="rn-slider">
+        <div class="rn-slider-tabs">${tabs}</div>
+        <div class="rn-slider-card" id="rn-slider-card" style="border-color: ${product.accentColor}; background: ${product.bgColor}">
+          <div class="rn-slider-badge" style="background: ${product.accentColor}">-${savings}% DCTO</div>
+          <div class="rn-slider-content">
+            <img class="rn-slider-img" src="${product.image}" alt="${product.title}">
+            <div class="rn-slider-info">
+              <p class="rn-slider-title" style="color: ${product.accentColor}">${product.title}</p>
+              <p class="rn-slider-subtitle">${product.subtitle}</p>
+              <div class="rn-slider-benefits">
+                ${product.benefits.map(b => `<span class="rn-slider-benefit">${b}</span>`).join('')}
+              </div>
+            </div>
+          </div>
+          <div class="rn-slider-pricing">
+            <div class="rn-slider-price-row">
+              <span class="rn-slider-compare">${formatCOP(product.comparePrice)}</span>
+              <span class="rn-slider-price">${formatCOP(product.price)}</span>
+            </div>
+            <span class="rn-slider-save" style="background: ${product.accentColor}">Ahorras ${formatCOP(discount)}</span>
+          </div>
+          <button class="rn-slider-cta" style="background: ${product.accentColor}" data-product-id="${product.id}">
+            <svg viewBox="0 0 24 24" fill="white" width="18" height="18"><path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm13.5-9l1.96 2.5H17V9.5h2.5zm-1.5 9c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+            PEDIR AHORA - PAGO CONTRAENTREGA
+          </button>
+        </div>
+        <div class="rn-slider-dots">${dots}</div>
+        <div class="rn-slider-nav">
+          <button class="rn-slider-arrow rn-slider-prev" ${sliderCurrentIndex === 0 ? 'disabled' : ''}>&lsaquo;</button>
+          <span class="rn-slider-counter">${sliderCurrentIndex + 1} / ${SLIDER_PRODUCTS.length}</span>
+          <button class="rn-slider-arrow rn-slider-next" ${sliderCurrentIndex === SLIDER_PRODUCTS.length - 1 ? 'disabled' : ''}>&rsaquo;</button>
+        </div>
+        <div class="rn-pick-badges">
+          <span>🚚 Envío gratis</span>
+          <span>💵 Pagas al recibir</span>
+          <span>✅ Garantía 30 días</span>
+        </div>
+      </div>
+    `;
+
+    // Bind events
+    bindSliderEvents(container);
+  }
+
+  function bindSliderEvents(container) {
+    // Tab clicks
+    container.querySelectorAll('.rn-slider-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        sliderCurrentIndex = parseInt(tab.dataset.slide);
+        renderSlider(container);
+      });
+    });
+
+    // Dot clicks
+    container.querySelectorAll('.rn-slider-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        sliderCurrentIndex = parseInt(dot.dataset.slide);
+        renderSlider(container);
+      });
+    });
+
+    // Arrow clicks
+    const prev = container.querySelector('.rn-slider-prev');
+    const next = container.querySelector('.rn-slider-next');
+    if (prev) prev.addEventListener('click', () => {
+      if (sliderCurrentIndex > 0) { sliderCurrentIndex--; renderSlider(container); }
+    });
+    if (next) next.addEventListener('click', () => {
+      if (sliderCurrentIndex < SLIDER_PRODUCTS.length - 1) { sliderCurrentIndex++; renderSlider(container); }
+    });
+
+    // Swipe support
+    const card = container.querySelector('#rn-slider-card');
+    if (card) {
+      card.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+      card.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0 && sliderCurrentIndex < SLIDER_PRODUCTS.length - 1) {
+            sliderCurrentIndex++;
+            renderSlider(container);
+          } else if (diff < 0 && sliderCurrentIndex > 0) {
+            sliderCurrentIndex--;
+            renderSlider(container);
+          }
+        }
+      }, { passive: true });
+    }
+
+    // CTA button - opens modal and adds product as extra
+    const cta = container.querySelector('.rn-slider-cta');
+    if (cta) {
+      cta.addEventListener('click', () => {
+        const prod = SLIDER_PRODUCTS[sliderCurrentIndex];
+        // Add this product as an extra in the modal
+        if (!extraProducts.find(ep => ep.id === prod.id)) {
+          extraProducts.push({
+            id: prod.id,
+            variantId: prod.variantId,
+            title: prod.title,
+            image: prod.image,
+            price: prod.price,
+            comparePrice: prod.comparePrice,
+            bg: prod.bgColor,
+            badge: formatCOP(prod.comparePrice - prod.price) + ' OFF',
+          });
+        }
+        openModal();
+      });
+    }
+  }
+
   // Initialize
   async function init() {
     // Load products for cross-sell
@@ -895,6 +1178,9 @@
       injectCODButton();
     }
 
+    // Build inline variant picker on product pages
+    buildVariantPicker();
+
     // Listen for custom events (from complementa-carrito block)
     document.addEventListener('rn:add-to-cart', (e) => {
       if (e.detail && e.detail.product) {
@@ -907,21 +1193,61 @@
       openModal();
     });
 
-    // Listen for #rn-open-cod anchor clicks (for Instant.so / custom buttons)
+    // Intercept cart icon clicks in the header → open COD form instead
     document.addEventListener('click', (e) => {
-      const link = e.target.closest('a[href*="#rn-open-cod"], button[href*="#rn-open-cod"]');
-      if (link) {
+      const cartLink = e.target.closest('a[href="/cart"], a[href*="/cart"], .cart-icon-bubble, .header__icon--cart, [data-cart-trigger], .cart-count-bubble, .icon-cart, details-modal cart-drawer');
+      if (cartLink) {
         e.preventDefault();
-        const productData = getProductFromPage();
-        openModal(productData);
+        e.stopPropagation();
+        openModal();
+      }
+    }, true);
+
+    // Listen for anchor clicks (for Instant.so / custom buttons)
+    document.addEventListener('click', (e) => {
+      const link = e.target.closest('a[href*="#rn-open-cod"], a[href*="#rn-open-mag"], a[href*="#rn-open-ash"], a[href*="#rn-add-ash"], a[href*="#rn-add-mag"], a[href*="#rn-add-mel"], button[href*="#rn-open-cod"], button[href*="#rn-open-mag"], button[href*="#rn-open-ash"], button[href*="#rn-add-ash"], button[href*="#rn-add-mag"], button[href*="#rn-add-mel"]');
+      if (!link) return;
+      e.preventDefault();
+      const href = link.getAttribute('href') || '';
+
+      if (href.includes('#rn-open-ash')) {
+        extraProducts = [];
+        openModal('ashwagandha');
+      } else if (href.includes('#rn-open-mag')) {
+        extraProducts = [];
+        openModal('magnesio');
+      } else if (href.includes('#rn-add-ash')) {
+        extraProducts = [];
+        addUpsellExtra('ashwagandha');
+        openModal(detectPageProduct());
+      } else if (href.includes('#rn-add-mag')) {
+        extraProducts = [];
+        addUpsellExtra('magnesio-forte');
+        openModal(detectPageProduct());
+      } else if (href.includes('#rn-add-mel')) {
+        extraProducts = [];
+        addUpsellExtra('melatonina-magnesio');
+        openModal(detectPageProduct());
+      } else {
+        // #rn-open-cod → Elixir del Sueño
+        extraProducts = [];
+        openModal('elixir');
       }
     });
 
-    // Also check if page loaded with #rn-open-cod hash
-    if (window.location.hash === '#rn-open-cod') {
-      const productData = getProductFromPage();
-      openModal(productData);
+    // Also check if page loaded with hash
+    function handleHash() {
+      const hash = window.location.hash;
+      if (hash === '#rn-open-cod') { extraProducts = []; openModal('elixir'); }
+      else if (hash === '#rn-open-mag') { extraProducts = []; openModal('magnesio'); }
+      else if (hash === '#rn-open-ash') { extraProducts = []; openModal('ashwagandha'); }
+      else if (hash === '#rn-add-ash') { extraProducts = []; addUpsellExtra('ashwagandha'); openModal(detectPageProduct()); }
+      else if (hash === '#rn-add-mag') { extraProducts = []; addUpsellExtra('magnesio-forte'); openModal(detectPageProduct()); }
+      else if (hash === '#rn-add-mel') { extraProducts = []; addUpsellExtra('melatonina-magnesio'); openModal(detectPageProduct()); }
     }
+
+    handleHash();
+    window.addEventListener('hashchange', handleHash);
   }
 
   // Wait for DOM ready
@@ -936,5 +1262,6 @@
     openModal,
     addToCart,
     getCart: () => [...cart],
+    buildVariantPicker,
   };
 })();

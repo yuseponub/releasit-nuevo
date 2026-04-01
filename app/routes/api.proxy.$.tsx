@@ -10,13 +10,21 @@ import { calcBundlePrice, distributePrice } from "../models/bundle-pricing.serve
  * The `authenticate.public.appProxy` validates the request signature.
  */
 
+// Helper to extract the sub-path from the proxy request
+// Shopify proxies to: {url}/{remaining_path}?shop=...&signature=...
+// So /apps/releasitnuevo/create-order → /api/proxy/create-order
+function getProxyPath(request: Request): string {
+  const url = new URL(request.url);
+  // Check query param first (dev/testing), then pathname
+  return url.searchParams.get("path") || url.pathname;
+}
+
 // GET requests - product listing
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const url = new URL(request.url);
-  const path = url.searchParams.get("path") || url.pathname;
+  const path = getProxyPath(request);
 
   // For the products endpoint
-  if (path.includes("/products")) {
+  if (path.includes("products")) {
     return handleGetProducts(request);
   }
 
@@ -25,20 +33,77 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 // POST requests - create order, create draft
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const url = new URL(request.url);
-  const path = url.searchParams.get("path") || url.pathname;
+  const path = getProxyPath(request);
   const body = await request.json();
 
-  if (path.includes("/create-order")) {
+  if (path.includes("create-order")) {
     return handleCreateOrder(request, body);
   }
 
-  if (path.includes("/create-draft")) {
+  if (path.includes("create-draft")) {
     return handleCreateDraft(request, body);
   }
 
   return json({ error: "Not found" }, { status: 404 });
 };
+
+// ----- Helper: Resolve variant IDs by title if non-numeric -----
+async function resolveVariantIds(admin: any, items: any[]) {
+  const needsResolution = items.some((i: any) => !/^\d+$/.test(i.variantId));
+  if (!needsResolution) return items;
+
+  // Fetch all active products to find real variant IDs
+  try {
+    const response = await admin.graphql(`
+      query {
+        products(first: 20, query: "status:active") {
+          edges {
+            node {
+              id
+              title
+              variants(first: 5) {
+                edges {
+                  node {
+                    id
+                    title
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `);
+
+    const data = await response.json();
+    const products = data.data.products.edges.map((e: any) => ({
+      title: e.node.title.toLowerCase(),
+      variantId: e.node.variants.edges[0]?.node.id || "",
+    }));
+
+    return items.map((item: any) => {
+      if (/^\d+$/.test(item.variantId)) return item;
+
+      const itemTitle = (item.title || "").toLowerCase();
+      const keyPart = (item.variantId || "").split("-variant-")[0].replace(/-/g, " ");
+
+      const match = products.find((p: any) =>
+        p.title.includes(keyPart) || itemTitle.includes(p.title) || p.title.includes(itemTitle.split(" x")[0].trim())
+      );
+
+      if (match) {
+        console.log(`Resolved variant: "${item.title}" → ${match.variantId}`);
+        return { ...item, variantId: match.variantId };
+      }
+
+      console.warn(`Could not resolve variant for: "${item.title}" (${item.variantId})`);
+      return item;
+    });
+  } catch (e) {
+    console.error("Error resolving variant IDs:", e);
+    return items;
+  }
+}
 
 // ----- Handler: Get Products -----
 async function handleGetProducts(request: Request) {
@@ -118,17 +183,8 @@ async function handleCreateOrder(request: Request, body: any) {
     const bundlePrice = calcBundlePrice(totalQty);
     const itemPrices = distributePrice(items, totalQty);
 
-    // Build line items for the order
-    const lineItems = items.map((item: any, idx: number) => ({
-      variantId: `gid://shopify/ProductVariant/${item.variantId}`,
-      quantity: item.quantity,
-      priceSet: {
-        shopMoney: {
-          amount: String(itemPrices[idx] / 100), // Convert to decimal for Shopify (COP doesn't use cents but Shopify expects decimal)
-          currencyCode: "COP",
-        },
-      },
-    }));
+    // Resolve variant IDs - if any are non-numeric, look them up by title
+    const resolvedItems = await resolveVariantIds(admin, items);
 
     // Create order via GraphQL Admin API
     const fullAddress = neighborhood
@@ -151,8 +207,10 @@ async function handleCreateOrder(request: Request, body: any) {
     `, {
       variables: {
         order: {
-          lineItems: items.map((item: any, idx: number) => ({
-            variantId: `gid://shopify/ProductVariant/${item.variantId}`,
+          lineItems: resolvedItems.map((item: any) => ({
+            variantId: item.variantId.startsWith("gid://")
+              ? item.variantId
+              : `gid://shopify/ProductVariant/${item.variantId}`,
             quantity: item.quantity,
           })),
           shippingAddress: {
@@ -282,10 +340,16 @@ async function handleCreateDraft(request: Request, body: any) {
       return json({ success: false, error: "Nombre y telefono requeridos" }, { status: 400 });
     }
 
-    // Create draft order in Shopify
-    const lineItems = items?.length > 0
-      ? items.map((item: any) => ({
-          variantId: `gid://shopify/ProductVariant/${item.variantId}`,
+    // Resolve variant IDs before creating draft
+    const resolvedItems = items?.length > 0
+      ? await resolveVariantIds(admin, items)
+      : [];
+
+    const lineItems = resolvedItems.length > 0
+      ? resolvedItems.map((item: any) => ({
+          variantId: item.variantId.startsWith("gid://")
+            ? item.variantId
+            : `gid://shopify/ProductVariant/${item.variantId}`,
           quantity: item.quantity || 1,
         }))
       : [];

@@ -1,0 +1,111 @@
+/* WhatsApp Floating Button */
+.wa-btn-container {
+  position: fixed;
+  z-index: 99999;
+  transition: all 0.3s ease;
+}
+
+.wa-btn-container.wa-pos-bottom-right {
+  bottom: var(--wa-margin, 20px);
+  right: var(--wa-margin, 20px);
+}
+
+.wa-btn-container.wa-pos-bottom-left {
+  bottom: var(--wa-margin, 20px);
+  left: var(--wa-margin, 20px);
+}
+
+.wa-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--wa-size, 60px);
+  height: var(--wa-size, 60px);
+  border-radius: 50%;
+  background-color: var(--wa-color, #25D366);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  text-decoration: none;
+}
+
+.wa-btn:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.wa-btn svg {
+  width: 60%;
+  height: 60%;
+  fill: #fff;
+}
+
+/* Tooltip */
+.wa-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  white-space: nowrap;
+  background: #fff;
+  color: #333;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: none;
+}
+
+.wa-pos-bottom-right .wa-tooltip {
+  right: 0;
+}
+
+.wa-pos-bottom-left .wa-tooltip {
+  left: 0;
+}
+
+.wa-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  border: 6px solid transparent;
+  border-top-color: #fff;
+}
+
+.wa-pos-bottom-right .wa-tooltip::after {
+  right: 20px;
+}
+
+.wa-pos-bottom-left .wa-tooltip::after {
+  left: 20px;
+}
+
+.wa-btn-container:hover .wa-tooltip,
+.wa-tooltip.wa-tooltip-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+
+/* Responsive */
+.wa-hide-mobile {
+  display: flex;
+}
+
+.wa-hide-desktop {
+  display: flex;
+}
+
+@media (max-width: 749px) {
+  .wa-hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 750px) {
+  .wa-hide-desktop {
+    display: none !important;
+  }
+}

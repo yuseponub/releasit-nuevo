@@ -26,5 +26,55 @@
         "label": "Titulo de la seccion"
       }
     }
+  },
+  "whatsapp_button": {
+    "name": "Botón de WhatsApp",
+    "settings": {
+      "phone_number": {
+        "label": "Número de WhatsApp (con código de país, ej: 573001234567)"
+      },
+      "message_product": {
+        "label": "Mensaje en página de producto",
+        "info": "Usa [product_name] para el nombre y [product_url] para el enlace"
+      },
+      "message_home": {
+        "label": "Mensaje en página de inicio"
+      },
+      "message_collection": {
+        "label": "Mensaje en página de colección",
+        "info": "Usa [collection_name] para el nombre de la colección"
+      },
+      "message_default": {
+        "label": "Mensaje por defecto (otras páginas)"
+      },
+      "button_position": {
+        "label": "Posición del botón",
+        "options": {
+          "bottom_right": "Abajo derecha",
+          "bottom_left": "Abajo izquierda"
+        }
+      },
+      "button_size": {
+        "label": "Tamaño del botón (px)"
+      },
+      "button_margin": {
+        "label": "Margen desde el borde (px)"
+      },
+      "tooltip_text": {
+        "label": "Texto del tooltip (dejar vacío para ocultar)"
+      },
+      "button_color": {
+        "label": "Color del botón"
+      },
+      "show_on_mobile": {
+        "label": "Mostrar en móvil"
+      },
+      "show_on_desktop": {
+        "label": "Mostrar en escritorio"
+      },
+      "pulse_animation": {
+        "label": "Animación de pulso"
+      }
+    }
   }
 }
