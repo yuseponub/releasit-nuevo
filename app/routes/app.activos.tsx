@@ -85,6 +85,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
     return {
       id: s.id,
+      shortId: s.id.slice(-6).toUpperCase(),
+      ip: s.ip || '-',
       customer: form.firstName ? `${form.firstName} ${form.lastName || ''}`.trim() : 'Anonimo',
       phone: form.phone || '-',
       email: form.email || '-',
@@ -133,30 +135,34 @@ export default function CarritosActivos() {
   };
 
   const activeRows = active.map((s: any) => [
+    s.shortId,
     s.customer,
     s.phone,
     s.products,
-    s.extras,
     s.city,
+    s.ip,
     statusBadge(s.status),
     s.duration,
-    s.lastSeen,
   ]);
 
   const closedRows = recentClosed.map((s: any) => [
+    s.shortId,
     s.customer,
     s.phone,
     s.products,
     s.city,
+    s.ip,
     s.duration,
     s.lastSeen + ' atras',
   ]);
 
   const historyRows = history.map((s: any) => [
+    s.shortId,
     s.customer,
     s.phone,
     s.products,
     s.city,
+    s.ip,
     statusBadge(s.status),
     s.duration,
     s.createdAt,
@@ -224,7 +230,7 @@ export default function CarritosActivos() {
               {activeRows.length > 0 ? (
                 <DataTable
                   columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text"]}
-                  headings={["Cliente", "Telefono", "Productos", "Extras", "Ciudad", "Estado", "Tiempo", "Ping"]}
+                  headings={["ID", "Cliente", "Telefono", "Productos", "Ciudad", "IP", "Estado", "Tiempo"]}
                   rows={activeRows}
                 />
               ) : (
@@ -243,8 +249,8 @@ export default function CarritosActivos() {
               <BlockStack gap="400">
                 <Text as="h2" variant="headingMd">Cerrados recientemente (10 min)</Text>
                 <DataTable
-                  columnContentTypes={["text", "text", "text", "text", "text", "text"]}
-                  headings={["Cliente", "Telefono", "Productos", "Ciudad", "Duracion", "Hace"]}
+                  columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text"]}
+                  headings={["ID", "Cliente", "Telefono", "Productos", "Ciudad", "IP", "Duracion", "Hace"]}
                   rows={closedRows}
                 />
               </BlockStack>
@@ -260,8 +266,8 @@ export default function CarritosActivos() {
               {historyRows.length > 0 ? (
                 <>
                   <DataTable
-                    columnContentTypes={["text", "text", "text", "text", "text", "text", "text"]}
-                    headings={["Cliente", "Telefono", "Productos", "Ciudad", "Estado", "Duracion", "Fecha"]}
+                    columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text", "text"]}
+                    headings={["ID", "Cliente", "Telefono", "Productos", "Ciudad", "IP", "Estado", "Duracion", "Fecha"]}
                     rows={historyRows}
                   />
                   {historyTotalPages > 1 && (
