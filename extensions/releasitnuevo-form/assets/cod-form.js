@@ -12,7 +12,7 @@
   const BUNDLE_PRICING = {
     1: 89900,
     2: 129900,
-    3: 159900,
+    3: 169900,
   };
 
   // Colombian departments
@@ -837,13 +837,11 @@
       activeProduct = productKeyOrData;
     }
 
-    // Detect Instant.so variant to set initial selection
+    // Detect Instant.so variant to set initial selection (qty only, NOT price)
     const instantVariant = getInstantVariant();
     if (instantVariant) {
       selectedModalVariant = instantVariant.qty;
-      if (instantVariant.price > 0) {
-        BUNDLE_PRICING[instantVariant.qty] = instantVariant.price;
-      }
+      // Don't override bundle pricing — use hardcoded values only
     }
 
     const VARIANT_OPTIONS = getVariantOptions();

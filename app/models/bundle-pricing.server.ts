@@ -7,7 +7,7 @@
 const DEFAULT_PRICING: Record<number, number> = {
   1: 89900,
   2: 129900,
-  3: 159900,
+  3: 169900,
 };
 
 export function calcBundlePrice(
