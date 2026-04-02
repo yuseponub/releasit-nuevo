@@ -33,6 +33,7 @@
   let draftSent = false;
   let draftTimeout = null;
   let orderSubmitting = false;
+  let currentDraftId = null; // Shopify draft order ID for this session
 
   // ========== TRACKING HELPER ==========
 
@@ -789,7 +790,9 @@
     if (overlay) {
       overlay.classList.remove('rn-active');
       document.body.style.overflow = '';
-      // Reset cart and extras so next open starts fresh
+      // Reset state so next open starts fresh
+      draftSent = false;
+      currentDraftId = null;
       cart = [];
       extraProducts = [];
     }
@@ -847,25 +850,45 @@
     if (draftSent) return;
     draftSent = true;
 
-    const firstName = document.getElementById('rn-firstName').value.trim();
-    const lastName = document.getElementById('rn-lastName').value.trim();
-    const phone = document.getElementById('rn-phone').value.trim();
+    var firstName = document.getElementById('rn-firstName').value.trim();
+    var lastName = document.getElementById('rn-lastName').value.trim();
+    var phone = document.getElementById('rn-phone').value.trim();
+    var emailEl = document.getElementById('rn-email');
+    var addressEl = document.getElementById('rn-address');
+    var cityEl = document.getElementById('rn-city');
+    var deptEl = document.getElementById('rn-department');
+    var neighborhoodEl = document.getElementById('rn-neighborhood');
 
     try {
-      await fetch(APP_PROXY_BASE + '/create-draft', {
+      var resp = await fetch(APP_PROXY_BASE + '/create-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName,
-          lastName,
-          phone,
-          items: cart.map(i => ({
+          firstName: firstName,
+          lastName: lastName,
+          phone: phone,
+          email: emailEl ? emailEl.value.trim() : '',
+          address: addressEl ? addressEl.value.trim() : '',
+          city: cityEl ? cityEl.value.trim() : '',
+          department: deptEl ? deptEl.value : '',
+          neighborhood: neighborhoodEl ? neighborhoodEl.value.trim() : '',
+          items: cart.map(function(i) { return {
             variantId: resolveVariantId(i),
             title: i.title,
             quantity: i.quantity,
-          })),
+          }; }),
+          extras: extraProducts.map(function(ep) { return {
+            variantId: resolveVariantId(ep),
+            title: ep.title,
+            price: ep.price,
+          }; }),
         }),
       });
+      var result = await resp.json();
+      if (result.draftOrderId) {
+        currentDraftId = result.draftOrderId;
+        console.log('[RN] Draft created:', currentDraftId);
+      }
     } catch (e) {
       console.error('ReleasitNuevo: Draft creation failed', e);
       draftSent = false;
@@ -963,6 +986,7 @@
       items: allItems,
       bundleSize: totalQty,
       total: bundlePrice + extrasTotal,
+      draftOrderId: currentDraftId || null,
     };
 
     try {

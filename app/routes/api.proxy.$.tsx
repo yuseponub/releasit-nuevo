@@ -385,6 +385,40 @@ async function handleCreateOrder(request: Request, body: any) {
     const orderName = orderResult?.order?.name || "";
     const statusPageUrl = orderResult?.order?.statusPageUrl || "";
 
+    // Mark draft as completed if one exists
+    const draftOrderId = body.draftOrderId;
+    if (draftOrderId) {
+      try {
+        // Update local DB
+        await db.draftOrder.updateMany({
+          where: { shopifyDraftOrderId: draftOrderId },
+          data: { status: "completed", convertedToOrderId: orderId },
+        });
+        // Delete draft in Shopify
+        await admin.graphql(`
+          mutation draftOrderDelete($input: DraftOrderDeleteInput!) {
+            draftOrderDelete(input: $input) {
+              deletedId
+              userErrors { field, message }
+            }
+          }
+        `, {
+          variables: { input: { id: draftOrderId } },
+        });
+        console.log("[CreateOrder] Draft marked as completed:", draftOrderId);
+      } catch (draftErr: any) {
+        console.error("[CreateOrder] Draft cleanup error (non-fatal):", draftErr.message);
+      }
+    }
+
+    // Also mark any draft with same phone as completed
+    try {
+      await db.draftOrder.updateMany({
+        where: { phone: formattedPhone, status: "open" },
+        data: { status: "completed", convertedToOrderId: orderId },
+      });
+    } catch (_) {}
+
     // Save to DB (non-fatal)
     try {
       await db.codOrder.create({
@@ -422,65 +456,86 @@ async function handleCreateDraft(request: Request, body: any) {
   try {
     const { admin, shop } = await authProxy(request);
 
-    const { firstName, lastName, phone, items } = body;
+    const { firstName, lastName, phone, email, address, city, department, neighborhood, items, extras } = body;
     if (!firstName || !phone) {
       return json({ success: false, error: "Nombre y telefono requeridos" }, { status: 400 });
     }
 
     const formattedPhone = formatPhoneCO(phone);
-    const resolvedItems = items?.length > 0 ? resolveVariantIds(admin, items) : [];
-    const lineItems = resolvedItems.length > 0
-      ? resolvedItems.map((item: any) => {
-          const vid = String(item.variantId);
-          return {
-            variantId: vid.startsWith("gid://") ? vid : `gid://shopify/ProductVariant/${vid}`,
-            quantity: item.quantity || 1,
-          };
-        })
-      : [];
+    const itemsList = (items || []).map((i: any) => `${i.title} x${i.quantity}`).join(", ");
+    const extrasList = (extras || []).map((e: any) => `${e.title}`).join(", ");
 
-    const draftResponse = await admin.graphql(`
-      mutation draftOrderCreate($input: DraftOrderInput!) {
-        draftOrderCreate(input: $input) {
-          draftOrder { id }
-          userErrors { field, message }
+    // Create draft in Shopify without line items (avoids inventory issues)
+    // Just store customer data + note for follow-up
+    const noteLines = [
+      `Carrito abandonado - ReleasitNuevo`,
+      ``,
+      `Cliente: ${firstName} ${lastName || ''}`,
+      `Tel: ${formattedPhone}`,
+      email ? `Email: ${email}` : '',
+      address ? `Direccion: ${address}` : '',
+      neighborhood ? `Barrio: ${neighborhood}` : '',
+      city ? `Ciudad: ${city}` : '',
+      department ? `Depto: ${department}` : '',
+      ``,
+      `Productos: ${itemsList || 'N/A'}`,
+      extrasList ? `Extras: ${extrasList}` : '',
+    ].filter(Boolean).join("\n");
+
+    let draftOrderId = "";
+
+    try {
+      const draftResponse = await admin.graphql(`
+        mutation draftOrderCreate($input: DraftOrderInput!) {
+          draftOrderCreate(input: $input) {
+            draftOrder { id }
+            userErrors { field, message }
+          }
         }
-      }
-    `, {
-      variables: {
-        input: {
-          lineItems: lineItems.length > 0 ? lineItems : undefined,
-          note: `Abandono parcial - ReleasitNuevo\nNombre: ${firstName} ${lastName || ''}\nTel: ${formattedPhone}`,
-          tags: ["releasitnuevo", "abandono"],
-          shippingAddress: {
-            firstName, lastName: lastName || ".",
-            phone: formattedPhone, address1: "Pendiente",
-            city: "Pendiente", province: "Pendiente",
-            country: "Colombia", countryCode: "CO", zip: "000000",
+      `, {
+        variables: {
+          input: {
+            note: noteLines,
+            tags: ["releasitnuevo", "abandono"],
+            shippingAddress: {
+              firstName, lastName: lastName || ".",
+              phone: formattedPhone,
+              address1: address || "Pendiente",
+              address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
+              city: city || "Pendiente",
+              province: department || "Pendiente",
+              country: "Colombia", countryCode: "CO", zip: "000000",
+            },
+            customAttributes: [
+              { key: "source", value: "releasitnuevo-abandono" },
+              { key: "productos", value: itemsList || "N/A" },
+              { key: "extras", value: extrasList || "Ninguno" },
+            ],
           },
-          customAttributes: [{ key: "source", value: "releasitnuevo-abandono" }],
         },
-      },
-    });
-
-    const draftData = await draftResponse.json();
-    const draftResult = draftData.data?.draftOrderCreate;
-
-    if (draftResult?.userErrors?.length > 0) {
-      return json({
-        success: false,
-        error: draftResult.userErrors.map((e: any) => e.message).join(", "),
       });
+
+      const draftData = await draftResponse.json();
+      const draftResult = draftData.data?.draftOrderCreate;
+
+      if (draftResult?.userErrors?.length > 0) {
+        console.error("[CreateDraft] Shopify errors:", draftResult.userErrors);
+      } else {
+        draftOrderId = draftResult?.draftOrder?.id || "";
+      }
+    } catch (shopifyErr: any) {
+      console.error("[CreateDraft] Shopify draft creation failed (non-fatal):", shopifyErr.message);
     }
 
-    const draftOrderId = draftResult?.draftOrder?.id || "";
-
+    // Always save to local DB even if Shopify draft fails
     try {
       await db.draftOrder.create({
         data: {
-          shop, shopifyDraftOrderId: draftOrderId,
-          firstName, lastName, phone,
-          items: items ? JSON.stringify(items) : null,
+          shop,
+          shopifyDraftOrderId: draftOrderId || null,
+          firstName, lastName: lastName || "",
+          phone: formattedPhone,
+          items: JSON.stringify({ items: items || [], extras: extras || [], address, city, department, neighborhood, email }),
           status: "open",
         },
       });
@@ -490,7 +545,7 @@ async function handleCreateDraft(request: Request, body: any) {
 
     try {
       await db.formSubmission.create({
-        data: { shop, type: "DRAFT_ORDER", data: JSON.stringify(body), shopifyOrderId: draftOrderId },
+        data: { shop, type: "DRAFT_ORDER", data: JSON.stringify(body), shopifyOrderId: draftOrderId || null },
       });
     } catch (_) {}
 
