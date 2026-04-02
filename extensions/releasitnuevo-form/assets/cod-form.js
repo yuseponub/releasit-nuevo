@@ -1007,11 +1007,11 @@
           department: data.department,
         });
 
-        // Redirect to Shopify order status page if available
-        if (result.statusPageUrl) {
-          window.location.href = result.statusPageUrl;
-          return;
-        }
+        // TODO: Re-enable redirect after testing
+        // if (result.statusPageUrl) {
+        //   window.location.href = result.statusPageUrl;
+        //   return;
+        // }
 
         // Fallback: show success screen
         ['rn-cart-section', 'rn-crosssell', 'rn-savings', 'rn-pricing', 'rn-form-section', 'rn-actions'].forEach(function(id) {
@@ -1046,18 +1046,42 @@
   function handleWhatsApp() {
     const totalQty = getTotalQty();
     const bundlePrice = calcBundlePrice(totalQty);
+    const extrasTotal = extraProducts.reduce(function(s, ep) { return s + ep.price; }, 0);
+    const grandTotal = bundlePrice + extrasTotal;
     const itemsList = cart.map(i => `${i.title} x${i.quantity}`).join(', ');
+    const extrasList = extraProducts.map(ep => `${ep.title} x1 (${formatCOP(ep.price)})`).join(', ');
+
+    const firstName = document.getElementById('rn-firstName').value.trim();
+    const lastName = document.getElementById('rn-lastName').value.trim();
+    const phone = document.getElementById('rn-phone').value.trim();
+    const address = document.getElementById('rn-address').value.trim();
+    const city = document.getElementById('rn-city').value.trim();
 
     const message = encodeURIComponent(
       `Hola! Quiero hacer un pedido con pago digital:\n\n` +
       `Productos: ${itemsList}\n` +
-      `Total: ${formatCOP(bundlePrice)}\n\n` +
-      `Nombre: ${document.getElementById('rn-firstName').value.trim()} ${document.getElementById('rn-lastName').value.trim()}\n` +
-      `Telefono: ${document.getElementById('rn-phone').value.trim()}`
+      (extrasList ? `Extras: ${extrasList}\n` : '') +
+      `Total: ${formatCOP(grandTotal)}\n\n` +
+      `Nombre: ${firstName} ${lastName}\n` +
+      `Telefono: ${phone}\n` +
+      (address ? `Direccion: ${address}, ${city}\n` : '')
     );
 
-    // Replace with actual WhatsApp number
-    const whatsappNumber = '573000000000';
+    // Track: Purchase event for WhatsApp orders too
+    trackEvent('Purchase', {
+      value: grandTotal,
+      contents: cart.map(function(i) { return { id: resolveVariantId(i), quantity: i.quantity }; }),
+      num_items: totalQty + extraProducts.length,
+      order_id: 'WA-' + Date.now(),
+      email: document.getElementById('rn-email').value.trim(),
+      phone: phone,
+      firstName: firstName,
+      lastName: lastName,
+      city: city,
+      department: document.getElementById('rn-department').value,
+    });
+
+    const whatsappNumber = '573105879824';
     window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
   }
 
