@@ -34,6 +34,100 @@
   let draftTimeout = null;
   let orderSubmitting = false;
   let currentDraftId = null; // Shopify draft order ID for this session
+  var heartbeatInterval = null;
+  var heartbeatSessionId = 'rn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+
+  // ========== HEARTBEAT (Active Cart Tracking) ==========
+
+  function getFormSnapshot() {
+    function getVal(id) {
+      var el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+    var firstName = getVal('rn-firstName');
+    var phone = getVal('rn-phone');
+    // Only return data if there's something meaningful
+    if (!firstName && !phone) return null;
+    return {
+      firstName: firstName,
+      lastName: getVal('rn-lastName'),
+      phone: phone,
+      email: getVal('rn-email'),
+      address: getVal('rn-address'),
+      neighborhood: getVal('rn-neighborhood'),
+      department: getVal('rn-department'),
+      city: getVal('rn-city'),
+    };
+  }
+
+  function getCartSnapshot() {
+    if (cart.length === 0) return null;
+    return cart.map(function(i) {
+      return { title: i.title, quantity: i.quantity, variantId: resolveVariantId(i) };
+    });
+  }
+
+  function getExtrasSnapshot() {
+    if (extraProducts.length === 0) return null;
+    return extraProducts.map(function(ep) {
+      return { title: ep.title, price: ep.price };
+    });
+  }
+
+  function sendHeartbeat(status) {
+    try {
+      var payload = JSON.stringify({
+        sessionId: heartbeatSessionId,
+        status: status || 'active',
+        page: window.location.pathname,
+        formData: getFormSnapshot(),
+        cartData: getCartSnapshot(),
+        extrasData: getExtrasSnapshot(),
+        userAgent: navigator.userAgent,
+      });
+
+      // Use sendBeacon for 'closed' status (survives page unload)
+      if (status === 'closed' && navigator.sendBeacon) {
+        navigator.sendBeacon(APP_PROXY_BASE + '/heartbeat', payload);
+      } else {
+        fetch(APP_PROXY_BASE + '/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payload,
+          keepalive: true,
+        }).catch(function() {});
+      }
+    } catch(e) {}
+  }
+
+  function startHeartbeat() {
+    if (heartbeatInterval) return;
+    sendHeartbeat('active');
+    heartbeatInterval = setInterval(function() {
+      sendHeartbeat('active');
+    }, 20000); // Every 20 seconds
+  }
+
+  function stopHeartbeat(status) {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+    sendHeartbeat(status || 'closed');
+  }
+
+  // Detect page close/hide
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'hidden' && heartbeatInterval) {
+      sendHeartbeat('idle');
+    } else if (document.visibilityState === 'visible' && heartbeatInterval) {
+      sendHeartbeat('active');
+    }
+  });
+
+  window.addEventListener('pagehide', function() {
+    if (heartbeatInterval) stopHeartbeat('closed');
+  });
 
   // ========== TRACKING HELPER ==========
 
@@ -772,6 +866,9 @@
       renderVariantCards();
     }
 
+    // Start heartbeat for active cart tracking
+    startHeartbeat();
+
     // Track: ViewContent + AddToCart (once per modal open)
     trackEvent('ViewContent', {
       content_name: activeProduct,
@@ -786,6 +883,7 @@
 
   // Close modal
   function closeModal() {
+    stopHeartbeat('closed');
     const overlay = document.getElementById('rn-overlay');
     if (overlay) {
       overlay.classList.remove('rn-active');
@@ -974,6 +1072,7 @@
 
     orderSubmitting = true;
     clearTimeout(draftTimeout); // Cancel draft timer — order is being submitted
+    stopHeartbeat('completed'); // Stop heartbeat — order is being placed
     const btn = document.getElementById('rn-submit');
     const originalText = btn.innerHTML;
     btn.disabled = true;

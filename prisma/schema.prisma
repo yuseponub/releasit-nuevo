@@ -135,3 +135,22 @@ model BundlePricing {
   @@unique([shop, quantity])
   @@index([shop])
 }
+
+// Active cart sessions (heartbeat-based real-time tracking)
+model ActiveSession {
+  id          String   @id // sessionId from frontend
+  shop        String
+  page        String?
+  userAgent   String?
+  ip          String?
+  formData    String?  // JSON: name, phone, email, city, etc.
+  cartData    String?  // JSON: products in cart
+  extrasData  String?  // JSON: upsell extras
+  status      String   @default("active") // active, idle, closed
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  @@index([shop])
+  @@index([lastSeenAt])
+  @@index([status])
+}

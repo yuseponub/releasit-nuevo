@@ -132,6 +132,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return await handleTrackEvent(request, body);
     }
 
+    if (path.includes("heartbeat")) {
+      return await handleHeartbeat(request, body);
+    }
+
     return json({ error: "Not found", path }, { status: 404 });
   } catch (e: any) {
     console.error("[AppProxy] FATAL:", e.message, e.stack);
@@ -660,6 +664,60 @@ async function handleTrackEvent(request: Request, body: any) {
   } catch (e: any) {
     console.error("[Track] Error:", e.message);
     return json({ success: false, error: e.message });
+  }
+}
+
+// ===================== HEARTBEAT (Active Carts) =====================
+
+async function handleHeartbeat(request: Request, body: any) {
+  try {
+    const url = new URL(request.url);
+    const shop = url.searchParams.get("shop") || "unknown";
+    const { sessionId, status, page, formData, cartData, extrasData } = body;
+
+    if (!sessionId) {
+      return json({ success: false, error: "Missing sessionId" }, { status: 400 });
+    }
+
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || request.headers.get("cf-connecting-ip")
+      || "";
+    const userAgent = body.userAgent || request.headers.get("user-agent") || "";
+
+    // Upsert session: create if new, update if exists
+    await db.activeSession.upsert({
+      where: { id: sessionId },
+      create: {
+        id: sessionId,
+        shop,
+        page: page || "",
+        userAgent,
+        ip: clientIp,
+        formData: formData ? JSON.stringify(formData) : null,
+        cartData: cartData ? JSON.stringify(cartData) : null,
+        extrasData: extrasData ? JSON.stringify(extrasData) : null,
+        status: status || "active",
+        lastSeenAt: new Date(),
+      },
+      update: {
+        page: page || undefined,
+        formData: formData ? JSON.stringify(formData) : undefined,
+        cartData: cartData ? JSON.stringify(cartData) : undefined,
+        extrasData: extrasData ? JSON.stringify(extrasData) : undefined,
+        status: status || "active",
+        lastSeenAt: new Date(),
+      },
+    });
+
+    // Cleanup: delete sessions older than 1 hour (batch, non-blocking)
+    db.activeSession.deleteMany({
+      where: { lastSeenAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } },
+    }).catch(() => {});
+
+    return json({ success: true });
+  } catch (e: any) {
+    console.error("[Heartbeat] Error:", e.message);
+    return json({ success: false });
   }
 }
 

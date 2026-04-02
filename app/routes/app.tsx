@@ -22,6 +22,7 @@ export default function App() {
       <NavMenu>
         <Link to="/app" rel="home">Dashboard</Link>
         <Link to="/app/orders">Ordenes</Link>
+        <Link to="/app/activos">Carritos Activos</Link>
         <Link to="/app/abandonos">Abandonos</Link>
         <Link to="/app/settings">Configuracion</Link>
       </NavMenu>
