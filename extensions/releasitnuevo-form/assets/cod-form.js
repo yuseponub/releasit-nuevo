@@ -34,6 +34,37 @@
   let draftTimeout = null;
   let orderSubmitting = false;
 
+  // ========== TRACKING HELPER ==========
+  function trackEvent(eventName, data) {
+    var eventId = 'rn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    // Facebook Pixel (client-side)
+    try {
+      if (typeof fbq !== 'undefined') {
+        var fbData = { currency: 'COP', content_type: 'product', eventID: eventId };
+        if (data.value) fbData.value = data.value;
+        if (data.contents) fbData.contents = data.contents;
+        if (data.content_name) fbData.content_name = data.content_name;
+        if (data.content_ids) fbData.content_ids = data.content_ids;
+        fbq('track', eventName, fbData, { eventID: eventId });
+      }
+    } catch(e) {}
+    // Backend tracking (Conversions API + monitoring DB)
+    try {
+      fetch(APP_PROXY_BASE + '/track', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventName: eventName,
+          eventId: eventId,
+          data: data,
+          userAgent: navigator.userAgent,
+          sourceUrl: window.location.href,
+          timestamp: Date.now(),
+        }),
+      }).catch(function(){});
+    } catch(e) {}
+  }
+
   // Real Shopify variant IDs mapped from config keys
   const REAL_VARIANT_IDS = {
     'elixir': '47357476634860',
@@ -188,6 +219,12 @@
           id: u.id, variantId: u.variantId, title: u.title, image: u.image,
           price: u.price, comparePrice: u.comparePrice, bg: u.bg,
           badge: formatCOP(u.comparePrice - u.price) + ' OFF',
+        });
+        // Track: AddToCart (upsell)
+        trackEvent('AddToCart', {
+          content_name: u.title + ' (upsell)',
+          content_ids: [resolveVariantId(u)],
+          value: u.price,
         });
         return;
       }
@@ -462,6 +499,12 @@
         }];
         renderVariantCards();
         updatePricing();
+        // Track: AddToCart
+        trackEvent('AddToCart', {
+          content_name: vopt.label,
+          content_ids: [resolveVariantId(cart[0])],
+          value: calcBundlePrice(qty),
+        });
       });
     });
 
@@ -706,6 +749,12 @@
       renderUpsells();
       renderVariantCards();
     }
+
+    // Track: ViewContent
+    trackEvent('ViewContent', {
+      content_name: activeProduct,
+      value: calcBundlePrice(selectedModalVariant),
+    });
   }
 
   // Close modal
@@ -739,6 +788,19 @@
         draftTimeout = setTimeout(() => createDraft(), 3000);
       }
     }
+
+    // Track: InitiateCheckout on first form interaction
+    var checkoutTracked = false;
+    function trackInitiateCheckout() {
+      if (checkoutTracked) return;
+      checkoutTracked = true;
+      var totalQty = getTotalQty();
+      trackEvent('InitiateCheckout', {
+        value: calcBundlePrice(totalQty),
+        contents: cart.map(function(i) { return { id: resolveVariantId(i), quantity: i.quantity }; }),
+      });
+    }
+    firstNameEl.addEventListener('focus', trackInitiateCheckout);
 
     firstNameEl.addEventListener('input', checkDraftTrigger);
     phoneEl.addEventListener('input', checkDraftTrigger);
@@ -902,44 +964,18 @@
       console.log('[RN] Result:', JSON.stringify(result));
 
       if (result.success) {
-        // Fire Facebook Pixel Purchase event
-        try {
-          var eventId = 'rn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-          var purchaseData = {
-            value: (bundlePrice + (extraProducts.reduce(function(s,e){return s+e.price},0))) / 1, // COP
-            currency: 'COP',
-            content_type: 'product',
-            contents: data.items.map(function(i) { return { id: i.variantId, quantity: i.quantity }; }),
-            order_id: result.orderName || result.orderId,
-            eventID: eventId,
-          };
-          if (typeof fbq !== 'undefined') {
-            fbq('track', 'Purchase', purchaseData, { eventID: eventId });
-            console.log('[RN] Facebook Pixel Purchase fired', purchaseData);
-          }
-          // Also send to our backend for Conversions API (server-side)
-          fetch(APP_PROXY_BASE + '/fb-event', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              eventName: 'Purchase',
-              eventId: eventId,
-              value: purchaseData.value,
-              currency: 'COP',
-              orderId: result.orderName || result.orderId,
-              email: data.email,
-              phone: data.phone,
-              firstName: data.firstName,
-              lastName: data.lastName,
-              city: data.city,
-              department: data.department,
-              userAgent: navigator.userAgent,
-              sourceUrl: window.location.href,
-            }),
-          }).catch(function(){});
-        } catch(fbErr) {
-          console.error('[RN] FB event error:', fbErr);
-        }
+        // Track: Purchase
+        trackEvent('Purchase', {
+          value: data.total,
+          contents: data.items.map(function(i) { return { id: i.variantId, quantity: i.quantity }; }),
+          order_id: result.orderName || result.orderId,
+          email: data.email,
+          phone: data.phone,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          city: data.city,
+          department: data.department,
+        });
 
         // Redirect to Shopify order status page if available
         if (result.statusPageUrl) {

@@ -128,8 +128,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return await handleCreateDraft(request, body);
     }
 
-    if (path.includes("fb-event")) {
-      return await handleFbEvent(request, body);
+    if (path.includes("fb-event") || path.includes("track")) {
+      return await handleTrackEvent(request, body);
     }
 
     return json({ error: "Not found", path }, { status: 404 });
@@ -506,69 +506,99 @@ async function handleCreateDraft(request: Request, body: any) {
 const FB_PIXEL_ID = process.env.FB_PIXEL_ID || "1639820782820483";
 const FB_ACCESS_TOKEN = process.env.FB_ACCESS_TOKEN || "";
 
-async function handleFbEvent(request: Request, body: any) {
+async function handleTrackEvent(request: Request, body: any) {
   try {
-    const {
-      eventName, eventId, value, currency, orderId,
-      email, phone, firstName, lastName, city, department,
-      userAgent, sourceUrl,
-    } = body;
+    const { eventName, eventId, data: eventData, userAgent, sourceUrl, timestamp } = body;
 
-    if (!FB_ACCESS_TOKEN) {
-      console.warn("[FB] No access token configured");
-      return json({ success: false, error: "FB token not configured" });
+    // Also support legacy fb-event format
+    const evName = eventName || body.eventName || "PageView";
+    const evId = eventId || body.eventId;
+    const value = eventData?.value || body.value;
+    const email = eventData?.email || body.email;
+    const phone = eventData?.phone || body.phone;
+    const firstName = eventData?.firstName || body.firstName;
+    const lastName = eventData?.lastName || body.lastName;
+    const city = eventData?.city || body.city;
+    const department = eventData?.department || body.department;
+    const orderId = eventData?.order_id || body.orderId;
+
+    // Get IP from request
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || request.headers.get("cf-connecting-ip")
+      || request.headers.get("x-real-ip")
+      || "";
+
+    // 1. Save to database for monitoring
+    try {
+      await db.formSubmission.create({
+        data: {
+          shop: new URL(request.url).searchParams.get("shop") || "unknown",
+          type: "TRACKING_" + evName.toUpperCase(),
+          data: JSON.stringify({ ...body, ip: clientIp }),
+          success: true,
+        },
+      });
+    } catch (dbErr: any) {
+      console.error("[Track] DB error:", dbErr.message);
     }
 
-    // Hash user data for Meta (SHA256)
-    const hashSHA256 = (val: string) => {
-      if (!val) return undefined;
-      return crypto.createHash("sha256").update(val.trim().toLowerCase()).digest("hex");
-    };
+    // 2. Send to Meta Conversions API (only for key events)
+    const metaEvents = ["Purchase", "AddToCart", "InitiateCheckout", "ViewContent"];
+    if (FB_ACCESS_TOKEN && metaEvents.includes(evName)) {
+      const hashSHA256 = (val: string) => {
+        if (!val) return undefined;
+        return crypto.createHash("sha256").update(val.trim().toLowerCase()).digest("hex");
+      };
 
-    const formattedPhone = phone ? formatPhoneCO(phone) : "";
+      const formattedPhone = phone ? formatPhoneCO(phone) : "";
 
-    const eventData = {
-      data: [{
-        event_name: eventName || "Purchase",
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: eventId,
-        event_source_url: sourceUrl,
-        action_source: "website",
-        user_data: {
-          em: email ? [hashSHA256(email)] : undefined,
-          ph: formattedPhone ? [hashSHA256(formattedPhone.replace("+", ""))] : undefined,
-          fn: firstName ? [hashSHA256(firstName)] : undefined,
-          ln: lastName ? [hashSHA256(lastName)] : undefined,
-          ct: city ? [hashSHA256(city)] : undefined,
-          st: department ? [hashSHA256(department)] : undefined,
-          country: [hashSHA256("co")],
-          client_user_agent: userAgent,
-        },
-        custom_data: {
-          value: value,
-          currency: currency || "COP",
-          order_id: orderId,
-          content_type: "product",
-        },
-      }],
-    };
+      const fbPayload = {
+        data: [{
+          event_name: evName,
+          event_time: Math.floor((timestamp || Date.now()) / 1000),
+          event_id: evId,
+          event_source_url: sourceUrl || body.sourceUrl,
+          action_source: "website",
+          user_data: {
+            em: email ? [hashSHA256(email)] : undefined,
+            ph: formattedPhone ? [hashSHA256(formattedPhone.replace("+", ""))] : undefined,
+            fn: firstName ? [hashSHA256(firstName)] : undefined,
+            ln: lastName ? [hashSHA256(lastName)] : undefined,
+            ct: city ? [hashSHA256(city)] : undefined,
+            st: department ? [hashSHA256(department)] : undefined,
+            country: [hashSHA256("co")],
+            client_ip_address: clientIp || undefined,
+            client_user_agent: userAgent || body.userAgent,
+          },
+          custom_data: {
+            value: value,
+            currency: "COP",
+            order_id: orderId,
+            content_type: "product",
+            contents: eventData?.contents || eventData?.content_ids?.map((id: string) => ({ id, quantity: 1 })),
+          },
+        }],
+      };
 
-    // Send to Meta Conversions API
-    const fbResp = await fetch(
-      `https://graph.facebook.com/v21.0/${FB_PIXEL_ID}/events?access_token=${FB_ACCESS_TOKEN}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(eventData),
+      try {
+        const fbResp = await fetch(
+          `https://graph.facebook.com/v21.0/${FB_PIXEL_ID}/events?access_token=${FB_ACCESS_TOKEN}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(fbPayload),
+          }
+        );
+        const fbResult = await fbResp.json();
+        console.log(`[Track] ${evName} → Meta:`, JSON.stringify(fbResult));
+      } catch (fbErr: any) {
+        console.error("[Track] Meta API error:", fbErr.message);
       }
-    );
+    }
 
-    const fbResult = await fbResp.json();
-    console.log("[FB] Conversions API response:", JSON.stringify(fbResult));
-
-    return json({ success: true, fbResult });
+    return json({ success: true, event: evName });
   } catch (e: any) {
-    console.error("[FB] Error:", e.message);
+    console.error("[Track] Error:", e.message);
     return json({ success: false, error: e.message });
   }
 }
