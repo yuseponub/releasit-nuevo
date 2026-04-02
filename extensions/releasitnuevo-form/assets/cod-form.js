@@ -526,12 +526,6 @@
         }];
         renderVariantCards();
         updatePricing();
-        // Track: AddToCart
-        trackEvent('AddToCart', {
-          content_name: vopt.label,
-          content_ids: [resolveVariantId(cart[0])],
-          value: calcBundlePrice(qty),
-        });
       });
     });
 
@@ -777,9 +771,14 @@
       renderVariantCards();
     }
 
-    // Track: ViewContent
+    // Track: ViewContent + AddToCart (once per modal open)
     trackEvent('ViewContent', {
       content_name: activeProduct,
+      value: calcBundlePrice(selectedModalVariant),
+    });
+    trackEvent('AddToCart', {
+      content_name: activeProduct,
+      content_ids: [resolveVariantId(cart[0])],
       value: calcBundlePrice(selectedModalVariant),
     });
   }
@@ -816,7 +815,7 @@
       }
     }
 
-    // Track: InitiateCheckout on first form interaction
+    // Track: InitiateCheckout on first form interaction (any field)
     var checkoutTracked = false;
     function trackInitiateCheckout() {
       if (checkoutTracked) return;
@@ -827,7 +826,9 @@
         contents: cart.map(function(i) { return { id: resolveVariantId(i), quantity: i.quantity }; }),
       });
     }
-    firstNameEl.addEventListener('focus', trackInitiateCheckout);
+    document.querySelectorAll('#rn-firstName, #rn-lastName, #rn-phone, #rn-phoneConfirm, #rn-email, #rn-address, #rn-neighborhood, #rn-city').forEach(function(el) {
+      if (el) el.addEventListener('focus', trackInitiateCheckout);
+    });
 
     firstNameEl.addEventListener('input', checkDraftTrigger);
     phoneEl.addEventListener('input', checkDraftTrigger);
