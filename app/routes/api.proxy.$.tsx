@@ -709,9 +709,10 @@ async function handleHeartbeat(request: Request, body: any) {
       },
     });
 
-    // Cleanup: delete sessions older than 1 hour (batch, non-blocking)
-    db.activeSession.deleteMany({
-      where: { lastSeenAt: { lt: new Date(Date.now() - 60 * 60 * 1000) } },
+    // Mark old active sessions as closed (not delete — keep for history)
+    db.activeSession.updateMany({
+      where: { lastSeenAt: { lt: new Date(Date.now() - 5 * 60 * 1000) }, status: "active" },
+      data: { status: "closed" },
     }).catch(() => {});
 
     return json({ success: true });
