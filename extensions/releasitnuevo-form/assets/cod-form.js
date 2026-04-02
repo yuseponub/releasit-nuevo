@@ -790,7 +790,20 @@
     if (overlay) {
       overlay.classList.remove('rn-active');
       document.body.style.overflow = '';
+
+      // If user filled name+phone but didn't complete order, create draft NOW
+      var closeFirstName = document.getElementById('rn-firstName');
+      var closePhone = document.getElementById('rn-phone');
+      if (closeFirstName && closePhone &&
+          closeFirstName.value.trim() && closePhone.value.trim().length >= 7 &&
+          !draftSent && !orderSubmitting) {
+        clearTimeout(draftTimeout);
+        createDraft();
+        console.log('[RN] Draft created on modal close');
+      }
+
       // Reset state so next open starts fresh
+      clearTimeout(draftTimeout);
       draftSent = false;
       currentDraftId = null;
       cart = [];
@@ -805,16 +818,25 @@
       if (e.target.id === 'rn-overlay') closeModal();
     });
 
-    // Draft order on partial fill (name + phone)
+    // Draft order — triggers 15min after name+phone are filled, or on modal close
     const firstNameEl = document.getElementById('rn-firstName');
     const phoneEl = document.getElementById('rn-phone');
+    var draftTimerStarted = false;
 
     function checkDraftTrigger() {
-      const firstName = firstNameEl.value.trim();
-      const phone = phoneEl.value.trim();
-      if (firstName && phone && phone.length >= 7 && !draftSent) {
+      if (draftTimerStarted || draftSent) return;
+      var firstName = firstNameEl.value.trim();
+      var phone = phoneEl.value.trim();
+      if (firstName && phone && phone.length >= 7) {
+        draftTimerStarted = true;
         clearTimeout(draftTimeout);
-        draftTimeout = setTimeout(() => createDraft(), 3000);
+        // 15 minutes timer
+        draftTimeout = setTimeout(function() {
+          if (!orderSubmitting && !draftSent) {
+            createDraft();
+          }
+        }, 15 * 60 * 1000);
+        console.log('[RN] Draft timer started (15 min)');
       }
     }
 
@@ -846,43 +868,51 @@
   }
 
   // Create draft order (abandonment tracking)
+  // Always reads ALL current form data at the moment it's called
   async function createDraft() {
-    if (draftSent) return;
+    if (draftSent || orderSubmitting) return;
     draftSent = true;
 
-    var firstName = document.getElementById('rn-firstName').value.trim();
-    var lastName = document.getElementById('rn-lastName').value.trim();
-    var phone = document.getElementById('rn-phone').value.trim();
-    var emailEl = document.getElementById('rn-email');
-    var addressEl = document.getElementById('rn-address');
-    var cityEl = document.getElementById('rn-city');
-    var deptEl = document.getElementById('rn-department');
-    var neighborhoodEl = document.getElementById('rn-neighborhood');
+    // Read ALL form fields at this moment
+    function getVal(id) {
+      var el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    }
+
+    var draftData = {
+      firstName: getVal('rn-firstName'),
+      lastName: getVal('rn-lastName'),
+      phone: getVal('rn-phone'),
+      phoneConfirm: getVal('rn-phoneConfirm'),
+      email: getVal('rn-email'),
+      address: getVal('rn-address'),
+      neighborhood: getVal('rn-neighborhood'),
+      department: getVal('rn-department'),
+      city: getVal('rn-city'),
+      items: cart.map(function(i) { return {
+        variantId: resolveVariantId(i),
+        title: i.title,
+        quantity: i.quantity,
+      }; }),
+      extras: extraProducts.map(function(ep) { return {
+        variantId: resolveVariantId(ep),
+        title: ep.title,
+        price: ep.price,
+      }; }),
+      totalValue: calcBundlePrice(getTotalQty()) + extraProducts.reduce(function(s, ep) { return s + ep.price; }, 0),
+    };
+
+    // Don't send if no name/phone
+    if (!draftData.firstName || !draftData.phone) {
+      draftSent = false;
+      return;
+    }
 
     try {
       var resp = await fetch(APP_PROXY_BASE + '/create-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          firstName: firstName,
-          lastName: lastName,
-          phone: phone,
-          email: emailEl ? emailEl.value.trim() : '',
-          address: addressEl ? addressEl.value.trim() : '',
-          city: cityEl ? cityEl.value.trim() : '',
-          department: deptEl ? deptEl.value : '',
-          neighborhood: neighborhoodEl ? neighborhoodEl.value.trim() : '',
-          items: cart.map(function(i) { return {
-            variantId: resolveVariantId(i),
-            title: i.title,
-            quantity: i.quantity,
-          }; }),
-          extras: extraProducts.map(function(ep) { return {
-            variantId: resolveVariantId(ep),
-            title: ep.title,
-            price: ep.price,
-          }; }),
-        }),
+        body: JSON.stringify(draftData),
       });
       var result = await resp.json();
       if (result.draftOrderId) {
@@ -943,6 +973,7 @@
     if (!validateForm()) return;
 
     orderSubmitting = true;
+    clearTimeout(draftTimeout); // Cancel draft timer — order is being submitted
     const btn = document.getElementById('rn-submit');
     const originalText = btn.innerHTML;
     btn.disabled = true;
