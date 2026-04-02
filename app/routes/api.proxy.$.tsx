@@ -508,19 +508,20 @@ const FB_ACCESS_TOKEN = process.env.FB_ACCESS_TOKEN || "";
 
 async function handleTrackEvent(request: Request, body: any) {
   try {
-    const { eventName, eventId, data: eventData, userAgent, sourceUrl, timestamp } = body;
+    const { eventName, eventId, data: eventData, userAgent, sourceUrl, timestamp, fbc, fbp } = body;
 
-    // Also support legacy fb-event format
-    const evName = eventName || body.eventName || "PageView";
-    const evId = eventId || body.eventId;
-    const value = eventData?.value || body.value;
-    const email = eventData?.email || body.email;
-    const phone = eventData?.phone || body.phone;
-    const firstName = eventData?.firstName || body.firstName;
-    const lastName = eventData?.lastName || body.lastName;
-    const city = eventData?.city || body.city;
-    const department = eventData?.department || body.department;
-    const orderId = eventData?.order_id || body.orderId;
+    const evName = eventName || "PageView";
+    const evId = eventId;
+    const value = eventData?.value;
+    const email = eventData?.email;
+    const phone = eventData?.phone;
+    const firstName = eventData?.firstName;
+    const lastName = eventData?.lastName;
+    const city = eventData?.city;
+    const department = eventData?.department;
+    const orderId = eventData?.order_id;
+    const externalId = eventData?.external_id;
+    const numItems = eventData?.num_items;
 
     // Get IP from request
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
@@ -555,9 +556,9 @@ async function handleTrackEvent(request: Request, body: any) {
       const fbPayload = {
         data: [{
           event_name: evName,
-          event_time: Math.floor((timestamp || Date.now()) / 1000),
+          event_time: Math.floor(Date.now() / 1000), // Use server time for accuracy
           event_id: evId,
-          event_source_url: sourceUrl || body.sourceUrl,
+          event_source_url: sourceUrl,
           action_source: "website",
           user_data: {
             em: email ? [hashSHA256(email)] : undefined,
@@ -567,14 +568,18 @@ async function handleTrackEvent(request: Request, body: any) {
             ct: city ? [hashSHA256(city)] : undefined,
             st: department ? [hashSHA256(department)] : undefined,
             country: [hashSHA256("co")],
+            external_id: externalId ? [hashSHA256(externalId)] : undefined,
             client_ip_address: clientIp || undefined,
-            client_user_agent: userAgent || body.userAgent,
+            client_user_agent: userAgent,
+            fbc: fbc || undefined,
+            fbp: fbp || undefined,
           },
           custom_data: {
             value: value,
             currency: "COP",
             order_id: orderId,
             content_type: "product",
+            num_items: numItems,
             contents: eventData?.contents || eventData?.content_ids?.map((id: string) => ({ id, quantity: 1 })),
           },
         }],
@@ -582,7 +587,7 @@ async function handleTrackEvent(request: Request, body: any) {
 
       try {
         const fbResp = await fetch(
-          `https://graph.facebook.com/v21.0/${FB_PIXEL_ID}/events?access_token=${FB_ACCESS_TOKEN}`,
+          `https://graph.facebook.com/v24.0/${FB_PIXEL_ID}/events?access_token=${FB_ACCESS_TOKEN}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

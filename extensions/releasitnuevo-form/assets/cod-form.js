@@ -35,19 +35,44 @@
   let orderSubmitting = false;
 
   // ========== TRACKING HELPER ==========
+
+  // Read Facebook cookies for attribution
+  function getFbCookies() {
+    var cookies = {};
+    try {
+      var match_fbp = document.cookie.match(/(^| )_fbp=([^;]+)/);
+      var match_fbc = document.cookie.match(/(^| )_fbc=([^;]+)/);
+      if (match_fbp) cookies.fbp = match_fbp[2];
+      if (match_fbc) cookies.fbc = match_fbc[2];
+      // If no fbc cookie but fbclid in URL, construct it
+      if (!cookies.fbc) {
+        var params = new URLSearchParams(window.location.search);
+        var fbclid = params.get('fbclid');
+        if (fbclid) {
+          cookies.fbc = 'fb.1.' + Date.now() + '.' + fbclid;
+        }
+      }
+    } catch(e) {}
+    return cookies;
+  }
+
   function trackEvent(eventName, data) {
     var eventId = 'rn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    var fbCookies = getFbCookies();
+
     // Facebook Pixel (client-side)
     try {
       if (typeof fbq !== 'undefined') {
-        var fbData = { currency: 'COP', content_type: 'product', eventID: eventId };
+        var fbData = { currency: 'COP', content_type: 'product' };
         if (data.value) fbData.value = data.value;
         if (data.contents) fbData.contents = data.contents;
         if (data.content_name) fbData.content_name = data.content_name;
         if (data.content_ids) fbData.content_ids = data.content_ids;
+        if (data.num_items) fbData.num_items = data.num_items;
         fbq('track', eventName, fbData, { eventID: eventId });
       }
     } catch(e) {}
+
     // Backend tracking (Conversions API + monitoring DB)
     try {
       fetch(APP_PROXY_BASE + '/track', {
@@ -60,6 +85,8 @@
           userAgent: navigator.userAgent,
           sourceUrl: window.location.href,
           timestamp: Date.now(),
+          fbc: fbCookies.fbc || '',
+          fbp: fbCookies.fbp || '',
         }),
       }).catch(function(){});
     } catch(e) {}
@@ -968,7 +995,9 @@
         trackEvent('Purchase', {
           value: data.total,
           contents: data.items.map(function(i) { return { id: i.variantId, quantity: i.quantity }; }),
+          num_items: data.items.reduce(function(s,i){ return s + i.quantity; }, 0),
           order_id: result.orderName || result.orderId,
+          external_id: result.orderId,
           email: data.email,
           phone: data.phone,
           firstName: data.firstName,
