@@ -128,6 +128,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return await handleCreateDraft(request, body);
     }
 
+    if (path.includes("fb-event")) {
+      return await handleFbEvent(request, body);
+    }
+
     return json({ error: "Not found", path }, { status: 404 });
   } catch (e: any) {
     console.error("[AppProxy] FATAL:", e.message, e.stack);
@@ -494,6 +498,78 @@ async function handleCreateDraft(request: Request, body: any) {
   } catch (e: any) {
     console.error("[CreateDraft] FATAL:", e.message, e.stack);
     return json({ success: false, error: "Error: " + e.message }, { status: 500 });
+  }
+}
+
+// ===================== FACEBOOK CONVERSIONS API =====================
+
+const FB_PIXEL_ID = process.env.FB_PIXEL_ID || "1639820782820483";
+const FB_ACCESS_TOKEN = process.env.FB_ACCESS_TOKEN || "";
+
+async function handleFbEvent(request: Request, body: any) {
+  try {
+    const {
+      eventName, eventId, value, currency, orderId,
+      email, phone, firstName, lastName, city, department,
+      userAgent, sourceUrl,
+    } = body;
+
+    if (!FB_ACCESS_TOKEN) {
+      console.warn("[FB] No access token configured");
+      return json({ success: false, error: "FB token not configured" });
+    }
+
+    // Hash user data for Meta (SHA256)
+    const hashSHA256 = (val: string) => {
+      if (!val) return undefined;
+      return crypto.createHash("sha256").update(val.trim().toLowerCase()).digest("hex");
+    };
+
+    const formattedPhone = phone ? formatPhoneCO(phone) : "";
+
+    const eventData = {
+      data: [{
+        event_name: eventName || "Purchase",
+        event_time: Math.floor(Date.now() / 1000),
+        event_id: eventId,
+        event_source_url: sourceUrl,
+        action_source: "website",
+        user_data: {
+          em: email ? [hashSHA256(email)] : undefined,
+          ph: formattedPhone ? [hashSHA256(formattedPhone.replace("+", ""))] : undefined,
+          fn: firstName ? [hashSHA256(firstName)] : undefined,
+          ln: lastName ? [hashSHA256(lastName)] : undefined,
+          ct: city ? [hashSHA256(city)] : undefined,
+          st: department ? [hashSHA256(department)] : undefined,
+          country: [hashSHA256("co")],
+          client_user_agent: userAgent,
+        },
+        custom_data: {
+          value: value,
+          currency: currency || "COP",
+          order_id: orderId,
+          content_type: "product",
+        },
+      }],
+    };
+
+    // Send to Meta Conversions API
+    const fbResp = await fetch(
+      `https://graph.facebook.com/v21.0/${FB_PIXEL_ID}/events?access_token=${FB_ACCESS_TOKEN}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eventData),
+      }
+    );
+
+    const fbResult = await fbResp.json();
+    console.log("[FB] Conversions API response:", JSON.stringify(fbResult));
+
+    return json({ success: true, fbResult });
+  } catch (e: any) {
+    console.error("[FB] Error:", e.message);
+    return json({ success: false, error: e.message });
   }
 }
 

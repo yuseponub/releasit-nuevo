@@ -810,10 +810,7 @@
       showError('rn-phone', 'Telefono invalido');
     }
 
-    const phoneConfirm = document.getElementById('rn-phoneConfirm').value.trim();
-    if (phoneConfirm && phoneConfirm !== phone) {
-      showError('rn-phoneConfirm', 'Los telefonos no coinciden');
-    }
+    // Phone confirm is optional - no validation needed
 
     if (!document.getElementById('rn-address').value.trim()) showError('rn-address', 'Requerido');
     if (!document.getElementById('rn-department').value) showError('rn-department', 'Requerido');
@@ -905,6 +902,45 @@
       console.log('[RN] Result:', JSON.stringify(result));
 
       if (result.success) {
+        // Fire Facebook Pixel Purchase event
+        try {
+          var eventId = 'rn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+          var purchaseData = {
+            value: (bundlePrice + (extraProducts.reduce(function(s,e){return s+e.price},0))) / 1, // COP
+            currency: 'COP',
+            content_type: 'product',
+            contents: data.items.map(function(i) { return { id: i.variantId, quantity: i.quantity }; }),
+            order_id: result.orderName || result.orderId,
+            eventID: eventId,
+          };
+          if (typeof fbq !== 'undefined') {
+            fbq('track', 'Purchase', purchaseData, { eventID: eventId });
+            console.log('[RN] Facebook Pixel Purchase fired', purchaseData);
+          }
+          // Also send to our backend for Conversions API (server-side)
+          fetch(APP_PROXY_BASE + '/fb-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              eventName: 'Purchase',
+              eventId: eventId,
+              value: purchaseData.value,
+              currency: 'COP',
+              orderId: result.orderName || result.orderId,
+              email: data.email,
+              phone: data.phone,
+              firstName: data.firstName,
+              lastName: data.lastName,
+              city: data.city,
+              department: data.department,
+              userAgent: navigator.userAgent,
+              sourceUrl: window.location.href,
+            }),
+          }).catch(function(){});
+        } catch(fbErr) {
+          console.error('[RN] FB event error:', fbErr);
+        }
+
         // Redirect to Shopify order status page if available
         if (result.statusPageUrl) {
           window.location.href = result.statusPageUrl;
