@@ -1007,11 +1007,11 @@
           department: data.department,
         });
 
-        // TODO: Re-enable redirect after testing
-        // if (result.statusPageUrl) {
-        //   window.location.href = result.statusPageUrl;
-        //   return;
-        // }
+        // Redirect to Shopify order status page if available
+        if (result.statusPageUrl) {
+          window.location.href = result.statusPageUrl;
+          return;
+        }
 
         // Fallback: show success screen
         ['rn-cart-section', 'rn-crosssell', 'rn-savings', 'rn-pricing', 'rn-form-section', 'rn-actions'].forEach(function(id) {
