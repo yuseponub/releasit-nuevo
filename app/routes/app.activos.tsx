@@ -12,11 +12,12 @@ import {
   Box,
   Button,
   Pagination,
+  Modal,
 } from "@shopify/polaris";
 import { authenticate } from "../shopify.server";
 import db from "../db.server";
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { useEffect } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 const HISTORY_PAGE_SIZE = 20;
 
@@ -91,6 +92,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       phone: form.phone || '-',
       email: form.email || '-',
       city: form.city || '-',
+      address: form.address || '-',
+      department: form.department || '-',
+      neighborhood: form.neighborhood || '-',
       products: cart.map((i: any) => `${i.title} x${i.quantity}`).join(', ') || 'Sin productos',
       extras: extras.map((e: any) => e.title).join(', ') || '-',
       status: statusVal,
@@ -116,11 +120,21 @@ export default function CarritosActivos() {
   const { active, recentClosed, history, historyTotal, historyPage, historyTotalPages, activeCount, stats } = useLoaderData<typeof loader>();
   const { revalidate } = useRevalidator();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedSession, setSelectedSession] = useState<any>(null);
 
   useEffect(() => {
     const interval = setInterval(() => revalidate(), 10000);
     return () => clearInterval(interval);
   }, [revalidate]);
+
+  const handleCloseModal = useCallback(() => setSelectedSession(null), []);
+
+  const allSessions = [...active, ...recentClosed, ...history];
+
+  const openDetail = (shortId: string) => {
+    const session = allSessions.find((s: any) => s.shortId === shortId);
+    if (session) setSelectedSession(session);
+  };
 
   const statusBadge = (status: string) => {
     const config: Record<string, { tone: any; label: string }> = {
@@ -134,8 +148,12 @@ export default function CarritosActivos() {
     return <Badge tone={c.tone}>{c.label}</Badge>;
   };
 
+  const clickableId = (shortId: string) => (
+    <Button variant="plain" onClick={() => openDetail(shortId)}>{shortId}</Button>
+  );
+
   const activeRows = active.map((s: any) => [
-    s.shortId,
+    clickableId(s.shortId),
     s.customer,
     s.phone,
     s.products,
@@ -146,7 +164,7 @@ export default function CarritosActivos() {
   ]);
 
   const closedRows = recentClosed.map((s: any) => [
-    s.shortId,
+    clickableId(s.shortId),
     s.customer,
     s.phone,
     s.products,
@@ -157,7 +175,7 @@ export default function CarritosActivos() {
   ]);
 
   const historyRows = history.map((s: any) => [
-    s.shortId,
+    clickableId(s.shortId),
     s.customer,
     s.phone,
     s.products,
@@ -294,6 +312,57 @@ export default function CarritosActivos() {
           </Card>
         </Layout.Section>
       </Layout>
+
+      {/* Modal de detalle */}
+      {selectedSession && (
+        <Modal
+          open={!!selectedSession}
+          onClose={handleCloseModal}
+          title={`Detalle sesion ${selectedSession.shortId}`}
+        >
+          <Modal.Section>
+            <BlockStack gap="300">
+              <Text as="h3" variant="headingMd">Datos del cliente</Text>
+              <DetailRow label="Nombre" value={selectedSession.customer} />
+              <DetailRow label="Telefono" value={selectedSession.phone} />
+              <DetailRow label="Email" value={selectedSession.email} />
+              <DetailRow label="Direccion" value={selectedSession.address} />
+              <DetailRow label="Barrio" value={selectedSession.neighborhood} />
+              <DetailRow label="Ciudad" value={selectedSession.city} />
+              <DetailRow label="Departamento" value={selectedSession.department} />
+
+              <Box paddingBlockStart="300">
+                <Text as="h3" variant="headingMd">Pedido</Text>
+              </Box>
+              <DetailRow label="Productos" value={selectedSession.products} />
+              <DetailRow label="Extras" value={selectedSession.extras} />
+
+              <Box paddingBlockStart="300">
+                <Text as="h3" variant="headingMd">Sesion</Text>
+              </Box>
+              <DetailRow label="Estado" value={selectedSession.status} />
+              <DetailRow label="IP" value={selectedSession.ip} />
+              <DetailRow label="Duracion" value={selectedSession.duration} />
+              <DetailRow label="Ultima actividad" value={selectedSession.lastSeen + ' atras'} />
+              <DetailRow label="Fecha" value={selectedSession.createdAt} />
+            </BlockStack>
+          </Modal.Section>
+        </Modal>
+      )}
     </Page>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  const isEmpty = !value || value === '-';
+  return (
+    <InlineStack gap="200">
+      <Box minWidth="120px">
+        <Text as="span" variant="bodyMd" fontWeight="semibold">{label}:</Text>
+      </Box>
+      <Text as="span" variant="bodyMd" tone={isEmpty ? "subdued" : undefined}>
+        {isEmpty ? 'No lleno' : value}
+      </Text>
+    </InlineStack>
   );
 }

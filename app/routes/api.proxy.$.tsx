@@ -469,8 +469,6 @@ async function handleCreateDraft(request: Request, body: any) {
     const itemsList = (items || []).map((i: any) => `${i.title} x${i.quantity}`).join(", ");
     const extrasList = (extras || []).map((e: any) => `${e.title}`).join(", ");
 
-    // Create draft in Shopify without line items (avoids inventory issues)
-    // Just store customer data + note for follow-up
     const noteLines = [
       `Carrito abandonado - ReleasitNuevo`,
       ``,
@@ -489,6 +487,60 @@ async function handleCreateDraft(request: Request, body: any) {
     let draftOrderId = "";
 
     try {
+      // Build line items from cart items - Shopify requires at least one line item
+      const lineItems: any[] = [];
+      if (items && items.length > 0) {
+        for (const item of items) {
+          if (item.variantId) {
+            // Use variant ID if available
+            const gid = item.variantId.toString().includes("gid://")
+              ? item.variantId
+              : `gid://shopify/ProductVariant/${item.variantId}`;
+            lineItems.push({
+              variantId: gid,
+              quantity: item.quantity || 1,
+            });
+          } else {
+            // Fallback: custom line item with title and price 0
+            lineItems.push({
+              title: item.title || "Producto",
+              quantity: item.quantity || 1,
+              originalUnitPrice: "0.00",
+            });
+          }
+        }
+      }
+
+      // Add extras as custom line items
+      if (extras && extras.length > 0) {
+        for (const extra of extras) {
+          if (extra.variantId) {
+            const gid = extra.variantId.toString().includes("gid://")
+              ? extra.variantId
+              : `gid://shopify/ProductVariant/${extra.variantId}`;
+            lineItems.push({
+              variantId: gid,
+              quantity: 1,
+            });
+          } else {
+            lineItems.push({
+              title: extra.title || "Extra",
+              quantity: 1,
+              originalUnitPrice: "0.00",
+            });
+          }
+        }
+      }
+
+      // If no line items at all, add a placeholder so Shopify accepts the draft
+      if (lineItems.length === 0) {
+        lineItems.push({
+          title: "Carrito abandonado (sin productos)",
+          quantity: 1,
+          originalUnitPrice: "0.00",
+        });
+      }
+
       const draftResponse = await admin.graphql(`
         mutation draftOrderCreate($input: DraftOrderInput!) {
           draftOrderCreate(input: $input) {
@@ -501,6 +553,7 @@ async function handleCreateDraft(request: Request, body: any) {
           input: {
             note: noteLines,
             tags: ["releasitnuevo", "abandono"],
+            lineItems,
             shippingAddress: {
               firstName, lastName: lastName || ".",
               phone: formattedPhone,
@@ -523,12 +576,20 @@ async function handleCreateDraft(request: Request, body: any) {
       const draftResult = draftData.data?.draftOrderCreate;
 
       if (draftResult?.userErrors?.length > 0) {
-        console.error("[CreateDraft] Shopify errors:", draftResult.userErrors);
+        console.error("[CreateDraft] Shopify userErrors:", JSON.stringify(draftResult.userErrors));
+        // Still try to get the ID in case it was partially created
+        draftOrderId = draftResult?.draftOrder?.id || "";
       } else {
         draftOrderId = draftResult?.draftOrder?.id || "";
       }
+
+      if (draftOrderId) {
+        console.log("[CreateDraft] Shopify draft created:", draftOrderId);
+      } else {
+        console.error("[CreateDraft] Shopify draft NOT created - no ID returned. Response:", JSON.stringify(draftData));
+      }
     } catch (shopifyErr: any) {
-      console.error("[CreateDraft] Shopify draft creation failed (non-fatal):", shopifyErr.message);
+      console.error("[CreateDraft] Shopify draft creation failed:", shopifyErr.message);
     }
 
     // Always save to local DB even if Shopify draft fails

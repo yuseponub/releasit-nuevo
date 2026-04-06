@@ -1206,7 +1206,9 @@
     const firstName = document.getElementById('rn-firstName').value.trim();
     const lastName = document.getElementById('rn-lastName').value.trim();
     const phone = document.getElementById('rn-phone').value.trim();
+    const email = document.getElementById('rn-email').value.trim();
     const address = document.getElementById('rn-address').value.trim();
+    const department = document.getElementById('rn-department').value;
     const city = document.getElementById('rn-city').value.trim();
 
     const message = encodeURIComponent(
@@ -1216,7 +1218,10 @@
       `Total: ${formatCOP(grandTotal)}\n\n` +
       `Nombre: ${firstName} ${lastName}\n` +
       `Telefono: ${phone}\n` +
-      (address ? `Direccion: ${address}, ${city}\n` : '')
+      (email ? `Email: ${email}\n` : '') +
+      (address ? `Direccion: ${address}\n` : '') +
+      (department ? `Departamento: ${department}\n` : '') +
+      (city ? `Ciudad: ${city}\n` : '')
     );
 
     // Track: Purchase event for WhatsApp orders too
