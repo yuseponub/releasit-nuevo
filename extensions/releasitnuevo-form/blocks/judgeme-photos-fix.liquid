@@ -1,0 +1,78 @@
+{% comment %}
+  Fix: Judge.me review photos not loading on Instant pages.
+  Instant's overflow:hidden breaks Judge.me's unveil() lazy loading.
+  This script forces data-src → src directly, no scroll/intersection dependency.
+{% endcomment %}
+
+<script>
+  (function() {
+    function forceLoadPhotos() {
+      document.querySelectorAll('.jdgm-rev__pic-img[data-src]').forEach(function(img) {
+        var src = img.getAttribute('data-src');
+        if (src && img.getAttribute('src') !== src) {
+          img.src = src;
+          img.removeAttribute('data-src');
+        }
+      });
+      document.querySelectorAll('.jdgm-gallery__pic-img[data-src]').forEach(function(img) {
+        var src = img.getAttribute('data-src');
+        if (src && img.getAttribute('src') !== src) {
+          img.src = src;
+          img.removeAttribute('data-src');
+        }
+      });
+      document.querySelectorAll('.jdgm-rev__pic-link.jdgm--loading').forEach(function(link) {
+        link.classList.remove('jdgm--loading');
+      });
+    }
+
+    /* Fix pagination: intercept in capturing phase before Instant blocks it,
+       then re-trigger via Judge.me's jQuery */
+    document.addEventListener('click', function(e) {
+      var pageBtn = e.target.closest('.jdgm-paginate__page');
+      if (!pageBtn || pageBtn.classList.contains('jdgm-curt')) return;
+
+      e.stopPropagation();
+      e.preventDefault();
+
+      if (window.jdgm && jdgm.$) {
+        jdgm.$(pageBtn).trigger('click');
+        setTimeout(forceLoadPhotos, 500);
+        setTimeout(forceLoadPhotos, 1500);
+      }
+    }, true);
+
+    function init() {
+      var widget = document.querySelector('.jdgm-rev-widg');
+      if (widget) {
+        /* Force load photos at multiple intervals to catch async rendering */
+        forceLoadPhotos();
+        setTimeout(forceLoadPhotos, 1000);
+        setTimeout(forceLoadPhotos, 3000);
+        setTimeout(forceLoadPhotos, 5000);
+
+        /* Watch for any DOM changes (pagination, sorting, filtering) */
+        new MutationObserver(function() {
+          setTimeout(forceLoadPhotos, 300);
+        }).observe(widget, { childList: true, subtree: true });
+      } else {
+        /* Widget not yet in DOM, retry */
+        setTimeout(init, 1000);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Judge.me Photos Fix",
+  "target": "head",
+  "settings": []
+}
+{% endschema %}

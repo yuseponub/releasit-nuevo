@@ -16,4 +16,8 @@ handle = "releasitnuevo-form"
 
   [[extensions.targeting]]
   module = "./blocks/whatsapp-button.liquid"
+  target = "body"
+
+  [[extensions.targeting]]
+  module = "./blocks/judgeme-photos-fix.liquid"
   target = "head"

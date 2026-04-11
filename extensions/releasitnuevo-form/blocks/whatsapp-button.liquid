@@ -2,16 +2,27 @@
 
 {% liquid
   assign page_type = request.page_type
-  assign product_name = ''
-  assign product_url = ''
-  assign collection_name = ''
+
+  assign phone_clean = block.settings.phone_number | remove: '+' | remove: ' ' | remove: '-' | remove: '(' | remove: ')' | remove: '.'
 
   if page_type == 'product'
-    assign product_name = product.title
     assign product_url = product.url | prepend: shop.url
+    assign raw_msg = block.settings.message_product | replace: '[product_name]', product.title | replace: '[product_url]', product_url
+  elsif page_type == 'index'
+    assign raw_msg = block.settings.message_home
   elsif page_type == 'collection'
-    assign collection_name = collection.title
+    assign raw_msg = block.settings.message_collection | replace: '[collection_name]', collection.title
+  else
+    assign raw_msg = block.settings.message_default
   endif
+
+  if raw_msg == blank
+    assign raw_msg = block.settings.message_default
+  endif
+
+  assign encoded_msg = raw_msg | url_encode
+  assign wa_url_web = 'https://wa.me/' | append: phone_clean | append: '?text=' | append: encoded_msg
+  assign wa_url_scheme = 'whatsapp://send?phone=' | append: phone_clean | append: '&text=' | append: encoded_msg
 
   assign position_class = 'wa-pos-bottom-right'
   if block.settings.button_position == 'bottom_left'
@@ -32,37 +43,53 @@
   endif
 %}
 
-<div
-  id="releasit-wa-btn"
-  class="wa-btn-container {{ position_class }}{{ visibility_class }}{{ pulse_class }}"
-  style="--wa-size: {{ block.settings.button_size }}px; --wa-margin: {{ block.settings.button_margin }}px; --wa-color: {{ block.settings.button_color }};"
-  data-phone="{{ block.settings.phone_number }}"
-  data-msg-product="{{ block.settings.message_product | escape }}"
-  data-msg-home="{{ block.settings.message_home | escape }}"
-  data-msg-collection="{{ block.settings.message_collection | escape }}"
-  data-msg-default="{{ block.settings.message_default | escape }}"
-  data-page-type="{{ page_type }}"
-  data-product-name="{{ product_name | escape }}"
-  data-product-url="{{ product_url }}"
-  data-collection-name="{{ collection_name | escape }}"
->
-  {% if block.settings.tooltip_text != blank %}
-    <span class="wa-tooltip">{{ block.settings.tooltip_text }}</span>
-  {% endif %}
+{%- if phone_clean != blank -%}
+  <div
+    id="releasit-wa-btn"
+    class="wa-btn-container {{ position_class }}{{ visibility_class }}{{ pulse_class }}"
+    style="--wa-size: {{ block.settings.button_size }}px; --wa-margin-x: {{ block.settings.button_margin }}px; --wa-margin-y: {{ block.settings.button_margin_y }}px; --wa-color: {{ block.settings.button_color }}; --wa-tooltip-bg: {{ block.settings.tooltip_bg_color }}; --wa-tooltip-color: {{ block.settings.tooltip_text_color }};"
+    data-wa-scheme="{{ wa_url_scheme }}"
+  >
+    {% if block.settings.tooltip_text != blank %}
+      <span class="wa-tooltip">{{ block.settings.tooltip_text }}</span>
+    {% endif %}
 
-  <button class="wa-btn" aria-label="Contactar por WhatsApp">
-    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-      <path d="M16.004 0C7.165 0 .004 7.161.004 15.999c0 2.819.734 5.574 2.13 7.998L.014 32l8.208-2.078A15.94 15.94 0 0 0 16.004 32C24.838 32 32 24.837 32 15.999 32 7.161 24.838 0 16.004 0zm0 29.392a13.36 13.36 0 0 1-7.226-2.116l-.518-.308-5.372 1.36 1.392-5.198-.338-.537A13.32 13.32 0 0 1 2.612 16C2.612 8.6 8.604 2.608 16.004 2.608S29.392 8.6 29.392 16c0 7.398-5.99 13.392-13.388 13.392zm7.342-10.024c-.402-.202-2.381-1.175-2.75-1.31-.37-.133-.64-.2-.908.202-.268.4-1.042 1.31-1.278 1.578-.236.268-.47.302-.872.1-.402-.2-1.698-.625-3.234-1.994-1.195-1.066-2.002-2.382-2.236-2.784-.236-.4-.026-.618.176-.818.182-.18.402-.47.604-.706.2-.236.268-.4.402-.668.134-.268.068-.502-.034-.702-.1-.202-.908-2.188-1.244-2.994-.328-.786-.66-.68-.908-.692l-.774-.014c-.268 0-.704.1-1.072.502-.37.4-1.41 1.376-1.41 3.358 0 1.982 1.444 3.896 1.646 4.164.2.268 2.84 4.334 6.882 6.078.962.414 1.712.662 2.298.848.964.308 1.842.264 2.536.16.774-.116 2.382-.974 2.718-1.914.334-.94.334-1.748.234-1.914-.1-.17-.368-.268-.77-.47z"/>
-    </svg>
-  </button>
-</div>
+    <a
+      class="wa-btn"
+      href="{{ wa_url_web }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="Contactar por WhatsApp"
+    >
+      <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M16.004 0C7.165 0 .004 7.161.004 15.999c0 2.819.734 5.574 2.13 7.998L.014 32l8.208-2.078A15.94 15.94 0 0 0 16.004 32C24.838 32 32 24.837 32 15.999 32 7.161 24.838 0 16.004 0zm0 29.392a13.36 13.36 0 0 1-7.226-2.116l-.518-.308-5.372 1.36 1.392-5.198-.338-.537A13.32 13.32 0 0 1 2.612 16C2.612 8.6 8.604 2.608 16.004 2.608S29.392 8.6 29.392 16c0 7.398-5.99 13.392-13.388 13.392zm7.342-10.024c-.402-.202-2.381-1.175-2.75-1.31-.37-.133-.64-.2-.908.202-.268.4-1.042 1.31-1.278 1.578-.236.268-.47.302-.872.1-.402-.2-1.698-.625-3.234-1.994-1.195-1.066-2.002-2.382-2.236-2.784-.236-.4-.026-.618.176-.818.182-.18.402-.47.604-.706.2-.236.268-.4.402-.668.134-.268.068-.502-.034-.702-.1-.202-.908-2.188-1.244-2.994-.328-.786-.66-.68-.908-.692l-.774-.014c-.268 0-.704.1-1.072.502-.37.4-1.41 1.376-1.41 3.358 0 1.982 1.444 3.896 1.646 4.164.2.268 2.84 4.334 6.882 6.078.962.414 1.712.662 2.298.848.964.308 1.842.264 2.536.16.774-.116 2.382-.974 2.718-1.914.334-.94.334-1.748.234-1.914-.1-.17-.368-.268-.77-.47z"/>
+      </svg>
+    </a>
+  </div>
 
-<script src="{{ 'whatsapp-button.js' | asset_url }}" defer></script>
+  <script>
+    (function () {
+      var el = document.getElementById('releasit-wa-btn');
+      if (!el) return;
+      var link = el.querySelector('a.wa-btn');
+      if (!link) return;
+      var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      if (isMobile) {
+        var scheme = el.getAttribute('data-wa-scheme');
+        if (scheme) {
+          link.setAttribute('href', scheme);
+          link.removeAttribute('target');
+          link.removeAttribute('rel');
+        }
+      }
+    })();
+  </script>
+{%- endif -%}
 
 {% schema %}
 {
   "name": "Botón de WhatsApp",
-  "target": "head",
+  "target": "body",
   "enabled_on": {
     "templates": ["*"]
   },
@@ -106,7 +133,7 @@
     },
     {
       "type": "header",
-      "content": "Apariencia"
+      "content": "Posición"
     },
     {
       "type": "select",
@@ -120,6 +147,30 @@
     },
     {
       "type": "range",
+      "id": "button_margin",
+      "label": "t:whatsapp_button.settings.button_margin.label",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "default": 20,
+      "unit": "px"
+    },
+    {
+      "type": "range",
+      "id": "button_margin_y",
+      "label": "t:whatsapp_button.settings.button_margin_y.label",
+      "min": 0,
+      "max": 300,
+      "step": 5,
+      "default": 20,
+      "unit": "px"
+    },
+    {
+      "type": "header",
+      "content": "Apariencia del botón"
+    },
+    {
+      "type": "range",
       "id": "button_size",
       "label": "t:whatsapp_button.settings.button_size.label",
       "min": 40,
@@ -129,14 +180,20 @@
       "unit": "px"
     },
     {
-      "type": "range",
-      "id": "button_margin",
-      "label": "t:whatsapp_button.settings.button_margin.label",
-      "min": 10,
-      "max": 50,
-      "step": 5,
-      "default": 20,
-      "unit": "px"
+      "type": "color",
+      "id": "button_color",
+      "label": "t:whatsapp_button.settings.button_color.label",
+      "default": "#25D366"
+    },
+    {
+      "type": "checkbox",
+      "id": "pulse_animation",
+      "label": "t:whatsapp_button.settings.pulse_animation.label",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Tooltip (mensaje al lado)"
     },
     {
       "type": "text",
@@ -146,9 +203,19 @@
     },
     {
       "type": "color",
-      "id": "button_color",
-      "label": "t:whatsapp_button.settings.button_color.label",
-      "default": "#25D366"
+      "id": "tooltip_bg_color",
+      "label": "t:whatsapp_button.settings.tooltip_bg_color.label",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "tooltip_text_color",
+      "label": "t:whatsapp_button.settings.tooltip_text_color.label",
+      "default": "#333333"
+    },
+    {
+      "type": "header",
+      "content": "Visibilidad"
     },
     {
       "type": "checkbox",
@@ -160,12 +227,6 @@
       "type": "checkbox",
       "id": "show_on_desktop",
       "label": "t:whatsapp_button.settings.show_on_desktop.label",
-      "default": true
-    },
-    {
-      "type": "checkbox",
-      "id": "pulse_animation",
-      "label": "t:whatsapp_button.settings.pulse_animation.label",
       "default": true
     }
   ]

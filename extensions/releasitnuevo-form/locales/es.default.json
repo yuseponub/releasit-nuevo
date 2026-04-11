@@ -58,10 +58,19 @@
         "label": "Tamaño del botón (px)"
       },
       "button_margin": {
-        "label": "Margen desde el borde (px)"
+        "label": "Distancia horizontal desde el borde (px)"
+      },
+      "button_margin_y": {
+        "label": "Distancia vertical desde abajo (px)"
       },
       "tooltip_text": {
         "label": "Texto del tooltip (dejar vacío para ocultar)"
+      },
+      "tooltip_bg_color": {
+        "label": "Color de fondo del tooltip"
+      },
+      "tooltip_text_color": {
+        "label": "Color del texto del tooltip"
       },
       "button_color": {
         "label": "Color del botón"
