@@ -5,7 +5,7 @@
 
 // Default bundle pricing
 const DEFAULT_PRICING: Record<number, number> = {
-  1: 89900,
+  1: 79900,
   2: 129900,
   3: 169900,
 };
@@ -41,7 +41,7 @@ export function calcSavings(
   customPricing?: Record<number, number>
 ): number {
   const pricing = customPricing || DEFAULT_PRICING;
-  const fullPrice = totalQty * (pricing[1] || 89900);
+  const fullPrice = totalQty * (pricing[1] || 79900);
   const bundlePrice = calcBundlePrice(totalQty, customPricing);
   return Math.max(0, fullPrice - bundlePrice);
 }

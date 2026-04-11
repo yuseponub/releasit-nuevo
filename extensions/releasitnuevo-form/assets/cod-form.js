@@ -10,7 +10,7 @@
 
   // Bundle pricing table (COP)
   const BUNDLE_PRICING = {
-    1: 89900,
+    1: 79900,
     2: 129900,
     3: 169900,
   };
@@ -369,7 +369,7 @@
   }
 
   // Get compare-at prices for savings calculation
-  const COMPARE_PRICES = { 1: 120000, 2: 240000, 3: 360000 };
+  const COMPARE_PRICES = { 1: 110000, 2: 220000, 3: 330000 };
 
   // Selected variant in modal
   let selectedModalVariant = 1;
@@ -665,7 +665,7 @@
   // Update pricing display
   function updatePricing() {
     const basePrice = BUNDLE_PRICING[selectedModalVariant] || 0;
-    const baseSubtotal = selectedModalVariant * 89900; // $89,900 per unit
+    const baseSubtotal = selectedModalVariant * 79900; // $79,900 per unit
     const baseDiscount = baseSubtotal - basePrice;
     const extrasCompareTotal = extraProducts.reduce((sum, ep) => sum + (ep.comparePrice || ep.price), 0);
     const extrasActualTotal = extraProducts.reduce((sum, ep) => sum + ep.price, 0);
@@ -887,11 +887,9 @@
       overlay.classList.remove('rn-active');
       document.body.style.overflow = '';
 
-      // If user filled name+phone but didn't complete order, create draft NOW
-      var closeFirstName = document.getElementById('rn-firstName');
+      // If user filled at least the phone, create draft NOW (no name required)
       var closePhone = document.getElementById('rn-phone');
-      if (closeFirstName && closePhone &&
-          closeFirstName.value.trim() && closePhone.value.trim().length >= 7 &&
+      if (closePhone && closePhone.value.trim().length >= 7 &&
           !draftSent && !orderSubmitting) {
         clearTimeout(draftTimeout);
         createDraft();
@@ -914,16 +912,16 @@
       if (e.target.id === 'rn-overlay') closeModal();
     });
 
-    // Draft order — triggers 15min after name+phone are filled, or on modal close
+    // Draft order — triggers 15min after phone is filled, or on modal close
     const firstNameEl = document.getElementById('rn-firstName');
     const phoneEl = document.getElementById('rn-phone');
     var draftTimerStarted = false;
 
     function checkDraftTrigger() {
       if (draftTimerStarted || draftSent) return;
-      var firstName = firstNameEl.value.trim();
       var phone = phoneEl.value.trim();
-      if (firstName && phone && phone.length >= 7) {
+      // Solo requerimos telefono (>=7 digitos). El nombre es opcional.
+      if (phone && phone.length >= 7) {
         draftTimerStarted = true;
         clearTimeout(draftTimeout);
         // 15 minutes timer
@@ -998,8 +996,8 @@
       totalValue: calcBundlePrice(getTotalQty()) + extraProducts.reduce(function(s, ep) { return s + ep.price; }, 0),
     };
 
-    // Don't send if no name/phone
-    if (!draftData.firstName || !draftData.phone) {
+    // Solo necesitamos el telefono - el nombre es opcional para retomar por WhatsApp
+    if (!draftData.phone || draftData.phone.length < 7) {
       draftSent = false;
       return;
     }
@@ -1195,7 +1193,17 @@
   }
 
   // Handle WhatsApp button
-  function handleWhatsApp() {
+  async function handleWhatsApp() {
+    if (orderSubmitting) return;
+
+    orderSubmitting = true;
+    clearTimeout(draftTimeout);
+    stopHeartbeat('completed');
+    const btn = document.getElementById('rn-whatsapp');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="rn-spinner"></span> Procesando...';
+
     const totalQty = getTotalQty();
     const bundlePrice = calcBundlePrice(totalQty);
     const extrasTotal = extraProducts.reduce(function(s, ep) { return s + ep.price; }, 0);
@@ -1211,35 +1219,124 @@
     const department = document.getElementById('rn-department').value;
     const city = document.getElementById('rn-city').value.trim();
 
-    const message = encodeURIComponent(
-      `Hola! Quiero hacer un pedido con pago digital:\n\n` +
-      `Productos: ${itemsList}\n` +
-      (extrasList ? `Extras: ${extrasList}\n` : '') +
-      `Total: ${formatCOP(grandTotal)}\n\n` +
-      `Nombre: ${firstName} ${lastName}\n` +
-      `Telefono: ${phone}\n` +
-      (email ? `Email: ${email}\n` : '') +
-      (address ? `Direccion: ${address}\n` : '') +
-      (department ? `Departamento: ${department}\n` : '') +
-      (city ? `Ciudad: ${city}\n` : '')
-    );
+    // Build items same as submitOrder
+    var allItems = cart.map(i => ({
+      variantId: resolveVariantId(i),
+      title: i.title,
+      quantity: i.quantity,
+      isUpsell: false,
+    }));
 
-    // Track: Purchase event for WhatsApp orders too
-    trackEvent('Purchase', {
-      value: grandTotal,
-      contents: cart.map(function(i) { return { id: resolveVariantId(i), quantity: i.quantity }; }),
-      num_items: totalQty + extraProducts.length,
-      order_id: 'WA-' + Date.now(),
-      email: document.getElementById('rn-email').value.trim(),
-      phone: phone,
-      firstName: firstName,
-      lastName: lastName,
-      city: city,
-      department: document.getElementById('rn-department').value,
+    extraProducts.forEach(function(ep) {
+      allItems.push({
+        variantId: resolveVariantId(ep),
+        title: ep.title,
+        quantity: 1,
+        isUpsell: true,
+        upsellPrice: ep.price,
+        upsellComparePrice: ep.comparePrice || ep.price,
+      });
     });
 
-    const whatsappNumber = '573105879824';
-    window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+    const data = {
+      firstName: firstName,
+      lastName: lastName,
+      phone: phone,
+      phoneConfirm: document.getElementById('rn-phoneConfirm').value.trim(),
+      email: email,
+      address: address,
+      neighborhood: document.getElementById('rn-neighborhood').value.trim(),
+      department: department,
+      city: city,
+      items: allItems,
+      bundleSize: totalQty,
+      total: grandTotal,
+      draftOrderId: currentDraftId || null,
+    };
+
+    try {
+      const resp = await fetch(APP_PROXY_BASE + '/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+
+      const contentType = resp.headers.get('content-type') || '';
+      let result;
+      if (contentType.includes('application/json')) {
+        result = await resp.json();
+      } else {
+        const text = await resp.text();
+        console.error('[RN] Non-JSON response:', text.substring(0, 500));
+        throw new Error('El servidor no respondio correctamente (status: ' + resp.status + ')');
+      }
+
+      if (result.success) {
+        // Track: Purchase with real Shopify order ID
+        trackEvent('Purchase', {
+          value: grandTotal,
+          contents: allItems.map(function(i) { return { id: i.variantId, quantity: i.quantity }; }),
+          num_items: allItems.reduce(function(s,i){ return s + i.quantity; }, 0),
+          order_id: result.orderName || result.orderId,
+          external_id: result.orderId,
+          email: email,
+          phone: phone,
+          firstName: firstName,
+          lastName: lastName,
+          city: city,
+          department: department,
+        });
+
+        // Build WhatsApp message with order number
+        const message = encodeURIComponent(
+          `Hola! Quiero hacer un pedido con pago digital:\n\n` +
+          `Orden: ${result.orderName || result.orderId}\n` +
+          `Productos: ${itemsList}\n` +
+          (extrasList ? `Extras: ${extrasList}\n` : '') +
+          `Total: ${formatCOP(grandTotal)}\n\n` +
+          `Nombre: ${firstName} ${lastName}\n` +
+          `Telefono: ${phone}\n` +
+          (email ? `Email: ${email}\n` : '') +
+          (address ? `Direccion: ${address}\n` : '') +
+          (department ? `Departamento: ${department}\n` : '') +
+          (city ? `Ciudad: ${city}\n` : '')
+        );
+
+        const whatsappNumber = '573105879824';
+        window.open(`https://wa.me/${whatsappNumber}?text=${message}`, '_blank');
+
+        // Redirect to order status page if available
+        if (result.statusPageUrl) {
+          window.location.href = result.statusPageUrl;
+          return;
+        }
+
+        // Fallback: show success screen
+        ['rn-cart-section', 'rn-crosssell', 'rn-savings', 'rn-pricing', 'rn-form-section', 'rn-actions'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+
+        var orderNameEl = document.getElementById('rn-order-name');
+        if (orderNameEl) orderNameEl.textContent = 'Orden: ' + (result.orderName || result.orderId);
+        var successEl = document.getElementById('rn-success');
+        if (successEl) successEl.style.display = 'block';
+
+        cart = [];
+        draftSent = false;
+      } else {
+        alert('Error al crear el pedido: ' + (result.error || 'Intenta de nuevo'));
+        orderSubmitting = false;
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    } catch (e) {
+      console.error('[RN] WhatsApp order submission failed:', e);
+      alert('Error: ' + (e.message || 'Error de conexion. Intenta de nuevo.'));
+      orderSubmitting = false;
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    }
   }
 
   // Inject COD button on product page
