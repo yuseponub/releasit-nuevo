@@ -136,6 +136,10 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return await handleHeartbeat(request, body);
     }
 
+    if (path.includes("wa-click")) {
+      return await handleWaClick(request, body);
+    }
+
     return json({ error: "Not found", path }, { status: 404 });
   } catch (e: any) {
     console.error("[AppProxy] FATAL:", e.message, e.stack);
@@ -461,18 +465,19 @@ async function handleCreateDraft(request: Request, body: any) {
     const { admin, shop } = await authProxy(request);
 
     const { firstName, lastName, phone, email, address, city, department, neighborhood, items, extras } = body;
-    if (!firstName || !phone) {
-      return json({ success: false, error: "Nombre y telefono requeridos" }, { status: 400 });
+    if (!phone) {
+      return json({ success: false, error: "Telefono requerido" }, { status: 400 });
     }
 
     const formattedPhone = formatPhoneCO(phone);
+    const safeFirstName = (firstName && firstName.trim()) || "Sin nombre";
     const itemsList = (items || []).map((i: any) => `${i.title} x${i.quantity}`).join(", ");
     const extrasList = (extras || []).map((e: any) => `${e.title}`).join(", ");
 
     const noteLines = [
       `Carrito abandonado - ReleasitNuevo`,
       ``,
-      `Cliente: ${firstName} ${lastName || ''}`,
+      `Cliente: ${safeFirstName} ${lastName || ''}`,
       `Tel: ${formattedPhone}`,
       email ? `Email: ${email}` : '',
       address ? `Direccion: ${address}` : '',
@@ -555,7 +560,7 @@ async function handleCreateDraft(request: Request, body: any) {
             tags: ["releasitnuevo", "abandono"],
             lineItems,
             shippingAddress: {
-              firstName, lastName: lastName || ".",
+              firstName: safeFirstName, lastName: lastName || ".",
               phone: formattedPhone,
               address1: address || "Pendiente",
               address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
@@ -598,7 +603,7 @@ async function handleCreateDraft(request: Request, body: any) {
         data: {
           shop,
           shopifyDraftOrderId: draftOrderId || null,
-          firstName, lastName: lastName || "",
+          firstName: safeFirstName, lastName: lastName || "",
           phone: formattedPhone,
           items: JSON.stringify({ items: items || [], extras: extras || [], address, city, department, neighborhood, email }),
           status: "open",
@@ -931,4 +936,94 @@ function resolveVariantIds(admin: any, items: any[]) {
     console.warn(`[Resolve] No mapping for: "${item.title}" (${vid})`);
     return item;
   });
+}
+
+// ===================== WhatsApp click tracking =====================
+
+async function handleWaClick(request: Request, body: any) {
+  try {
+    const url = new URL(request.url);
+    const shop = url.searchParams.get("shop") || "unknown";
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      request.headers.get("cf-connecting-ip") ||
+      request.headers.get("x-real-ip") ||
+      "";
+
+    // Try to enrich with identity from ActiveSession (same sessionId, or same IP+UA recently)
+    let identity: {
+      firstName?: string;
+      lastName?: string;
+      phone?: string;
+      email?: string;
+      city?: string;
+    } = {};
+
+    try {
+      const ua: string = body.userAgent || "";
+      const cutoff = new Date(Date.now() - 30 * 60 * 1000); // last 30 min
+
+      let active = null;
+      if (body.sessionId) {
+        active = await db.activeSession.findFirst({
+          where: { shop, id: body.sessionId, formData: { not: null } },
+          orderBy: { lastSeenAt: "desc" },
+        });
+      }
+      if (!active && ip) {
+        active = await db.activeSession.findFirst({
+          where: {
+            shop,
+            ip,
+            userAgent: ua || undefined,
+            formData: { not: null },
+            lastSeenAt: { gte: cutoff },
+          },
+          orderBy: { lastSeenAt: "desc" },
+        });
+      }
+      if (active?.formData) {
+        try {
+          const form = JSON.parse(active.formData);
+          identity = {
+            firstName: form.firstName || undefined,
+            lastName: form.lastName || undefined,
+            phone: form.phone || undefined,
+            email: form.email || undefined,
+            city: form.city || undefined,
+          };
+        } catch (_) {}
+      }
+    } catch (err) {
+      console.error("[wa-click] identity lookup error", err);
+    }
+
+    await db.whatsAppClick.create({
+      data: {
+        shop,
+        eventId: body.eventId || null,
+        sessionId: body.sessionId || null,
+        pageType: body.pageType || null,
+        pageUrl: body.pageUrl || null,
+        productId: body.productId ? String(body.productId) : null,
+        productName: body.productName || null,
+        productPrice: body.productPrice || null,
+        collectionName: body.collectionName || null,
+        referrer: body.referrer || null,
+        userAgent: body.userAgent || null,
+        ip: ip || null,
+        firstName: identity.firstName || null,
+        lastName: identity.lastName || null,
+        phone: identity.phone || null,
+        email: identity.email || null,
+        city: identity.city || null,
+      },
+    });
+
+    return json({ ok: true });
+  } catch (e: any) {
+    console.error("[wa-click] error:", e.message);
+    return json({ ok: false, error: e.message }, { status: 500 });
+  }
 }

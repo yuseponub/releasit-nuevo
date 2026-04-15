@@ -49,6 +49,15 @@
     class="wa-btn-container {{ position_class }}{{ visibility_class }}{{ pulse_class }}"
     style="--wa-size: {{ block.settings.button_size }}px; --wa-margin-x: {{ block.settings.button_margin }}px; --wa-margin-y: {{ block.settings.button_margin_y }}px; --wa-color: {{ block.settings.button_color }}; --wa-tooltip-bg: {{ block.settings.tooltip_bg_color }}; --wa-tooltip-color: {{ block.settings.tooltip_text_color }};"
     data-wa-scheme="{{ wa_url_scheme }}"
+    data-page-type="{{ page_type }}"
+    {% if page_type == 'product' %}
+      data-product-id="{{ product.id }}"
+      data-product-name="{{ product.title | escape }}"
+      data-product-price="{{ product.price | money_without_currency | strip_html }}"
+    {% endif %}
+    {% if page_type == 'collection' %}
+      data-collection-name="{{ collection.title | escape }}"
+    {% endif %}
   >
     {% if block.settings.tooltip_text != blank %}
       <span class="wa-tooltip">{{ block.settings.tooltip_text }}</span>
@@ -73,6 +82,7 @@
       if (!el) return;
       var link = el.querySelector('a.wa-btn');
       if (!link) return;
+
       var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
       if (isMobile) {
         var scheme = el.getAttribute('data-wa-scheme');
@@ -82,6 +92,87 @@
           link.removeAttribute('rel');
         }
       }
+
+      function genEventId() {
+        try {
+          if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        } catch (e) {}
+        return 'wa_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      }
+
+      link.addEventListener('click', function () {
+        var pageType = el.getAttribute('data-page-type') || '';
+        var productId = el.getAttribute('data-product-id') || '';
+        var productName = el.getAttribute('data-product-name') || '';
+        var productPrice = el.getAttribute('data-product-price') || '';
+        var collectionName = el.getAttribute('data-collection-name') || '';
+        var eventId = genEventId();
+
+        var payload = {
+          content_name: productName || collectionName || document.title,
+          content_category: pageType,
+          page_url: window.location.href,
+          channel: 'whatsapp'
+        };
+        if (productId) payload.content_ids = [String(productId)];
+
+        try {
+          if (typeof fbq !== 'undefined') {
+            fbq('track', 'Lead', payload, { eventID: eventId });
+            fbq('trackCustom', 'WhatsAppClick', payload, { eventID: eventId });
+          }
+        } catch (e) {}
+
+        // Backend tracking (non-blocking — sendBeacon survives navigation)
+        try {
+          var trackPayload = JSON.stringify({
+            eventId: eventId,
+            sessionId: (function () {
+              try {
+                var k = 'rn_wa_sid';
+                var sid = localStorage.getItem(k);
+                if (!sid) {
+                  sid = 'wa_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+                  localStorage.setItem(k, sid);
+                }
+                return sid;
+              } catch (e) { return null; }
+            })(),
+            pageType: pageType,
+            pageUrl: window.location.href,
+            productId: productId || null,
+            productName: productName || null,
+            productPrice: productPrice || null,
+            collectionName: collectionName || null,
+            referrer: document.referrer || null,
+            userAgent: navigator.userAgent
+          });
+          var trackUrl = '/apps/releasitnuevo/wa-click';
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon(trackUrl, new Blob([trackPayload], { type: 'application/json' }));
+          } else {
+            fetch(trackUrl, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json' }, body: trackPayload });
+          }
+        } catch (e) {}
+
+        try {
+          if (typeof gtag !== 'undefined') {
+            gtag('event', 'whatsapp_click', {
+              page_type: pageType,
+              product_name: productName,
+              value: payload.value || undefined
+            });
+          }
+          if (window.dataLayer) {
+            window.dataLayer.push({
+              event: 'whatsapp_click',
+              page_type: pageType,
+              product_name: productName,
+              product_id: productId
+            });
+          }
+        } catch (e) {}
+      });
     })();
   </script>
 {%- endif -%}

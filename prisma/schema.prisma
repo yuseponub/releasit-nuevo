@@ -136,6 +136,34 @@ model BundlePricing {
   @@index([shop])
 }
 
+// WhatsApp button clicks — raw tracking for "who clicked and when"
+model WhatsAppClick {
+  id              Int      @id @default(autoincrement())
+  shop            String
+  eventId         String?  @unique
+  sessionId       String?
+  pageType        String?
+  pageUrl         String?
+  productId       String?
+  productName     String?
+  productPrice    String?
+  collectionName  String?
+  referrer        String?
+  userAgent       String?
+  ip              String?
+  firstName       String?
+  lastName        String?
+  phone           String?
+  email           String?
+  city            String?
+  createdAt       DateTime @default(now())
+
+  @@index([shop])
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([productId])
+}
+
 // Active cart sessions (heartbeat-based real-time tracking)
 model ActiveSession {
   id          String   @id // sessionId from frontend

@@ -24,6 +24,7 @@ export default function App() {
         <Link to="/app/orders">Ordenes</Link>
         <Link to="/app/activos">Carritos Activos</Link>
         <Link to="/app/abandonos">Abandonos</Link>
+        <Link to="/app/whatsapp">WhatsApp Clicks</Link>
         <Link to="/app/settings">Configuracion</Link>
       </NavMenu>
       <Outlet />
