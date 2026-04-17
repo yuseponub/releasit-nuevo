@@ -17,13 +17,13 @@
 
   // Colombian departments
   const DEPARTMENTS = [
-    'Amazonas', 'Antioquia', 'Arauca', 'Atlantico', 'Bolivar',
-    'Boyaca', 'Caldas', 'Caqueta', 'Casanare', 'Cauca',
-    'Cesar', 'Choco', 'Cordoba', 'Cundinamarca', 'Guainia',
+    'Amazonas', 'Antioquia', 'Arauca', 'Atlántico', 'Bolívar',
+    'Boyacá', 'Caldas', 'Caquetá', 'Casanare', 'Cauca',
+    'Cesar', 'Chocó', 'Córdoba', 'Cundinamarca', 'Guainía',
     'Guaviare', 'Huila', 'La Guajira', 'Magdalena', 'Meta',
-    'Narino', 'Norte de Santander', 'Putumayo', 'Quindio',
-    'Risaralda', 'San Andres y Providencia', 'Santander', 'Sucre',
-    'Tolima', 'Valle del Cauca', 'Vaupes', 'Vichada', 'Bogota D.C.'
+    'Nariño', 'Norte de Santander', 'Putumayo', 'Quindío',
+    'Risaralda', 'San Andrés y Providencia', 'Santander', 'Sucre',
+    'Tolima', 'Valle del Cauca', 'Vaupés', 'Vichada', 'Bogotá D.C.'
   ];
 
   // State
@@ -418,64 +418,64 @@
           </div>
         </div>
 
-        <div class="rn-upsell-header">
+        <div class="rn-upsell-header" style="display:none;">
           <p class="rn-upsell-header-title">POTENCIA TU DESCANSO</p>
           <p class="rn-upsell-header-sub">$40,000 OFF EN LA COMPRA DE ESTOS PRODUCTOS:</p>
         </div>
-        <div class="rn-upsell-row" id="rn-upsell-row"></div>
+        <div class="rn-upsell-row" id="rn-upsell-row" style="display:none;"></div>
 
         <!-- Form -->
-        <div class="rn-form" id="rn-form-section">
+        <form class="rn-form" id="rn-form-section" autocomplete="on" onsubmit="return false;">
           <p class="rn-form-title">LLENE LOS SIGUIENTES DATOS PARA ENVIO CONTRAENTREGA:</p>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Nombre <span class="rn-required">*</span></label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">👤</span><input type="text" class="rn-form-input" id="rn-firstName" placeholder="Nombre" required></div>
+            <label class="rn-form-label" for="rn-firstName">Nombre <span class="rn-required">*</span></label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">👤</span><input type="text" class="rn-form-input" id="rn-firstName" name="given-name" autocomplete="given-name" autocapitalize="words" placeholder="Nombre" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Apellido <span class="rn-required">*</span></label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">👤</span><input type="text" class="rn-form-input" id="rn-lastName" placeholder="Apellido" required></div>
+            <label class="rn-form-label" for="rn-lastName">Apellido <span class="rn-required">*</span></label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">👤</span><input type="text" class="rn-form-input" id="rn-lastName" name="family-name" autocomplete="family-name" autocapitalize="words" placeholder="Apellido" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Teléfono <span class="rn-required">*</span></label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">📞</span><input type="tel" class="rn-form-input" id="rn-phone" placeholder="Número de teléfono" required></div>
+            <label class="rn-form-label" for="rn-phone">Teléfono <span class="rn-required">*</span></label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📞</span><input type="tel" class="rn-form-input" id="rn-phone" name="tel" autocomplete="tel" inputmode="tel" placeholder="Número de teléfono" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Confirma tu teléfono</label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">📞</span><input type="tel" class="rn-form-input" id="rn-phoneConfirm" placeholder="Confirma tu número"></div>
+            <label class="rn-form-label" for="rn-phoneConfirm">Confirma tu teléfono</label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📞</span><input type="tel" class="rn-form-input" id="rn-phoneConfirm" name="tel-confirm" autocomplete="off" inputmode="tel" placeholder="Confirma tu número"></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Dirección Completa <span class="rn-required">*</span></label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-address" placeholder="Dirección Completa" required></div>
+            <label class="rn-form-label" for="rn-address">Dirección Completa <span class="rn-required">*</span></label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-address" name="street-address" autocomplete="street-address" placeholder="Dirección Completa" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Barrio</label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-neighborhood" placeholder="Agrega el nombre de tu barrio"></div>
+            <label class="rn-form-label" for="rn-neighborhood">Barrio</label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-neighborhood" name="address-line2" autocomplete="address-line2" placeholder="Agrega el nombre de tu barrio"></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Departamento <span class="rn-required">*</span></label>
-            <select class="rn-form-select" id="rn-department" required>
+            <label class="rn-form-label" for="rn-department">Departamento <span class="rn-required">*</span></label>
+            <select class="rn-form-select" id="rn-department" name="address-level1" autocomplete="address-level1" required>
               <option value="">Elige tu departamento</option>
               ${DEPARTMENTS.map(d => `<option value="${d}">${d}</option>`).join('')}
             </select>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Ciudad <span class="rn-required">*</span></label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-city" placeholder="Nombre ciudad/pueblo" required></div>
+            <label class="rn-form-label" for="rn-city">Ciudad <span class="rn-required">*</span></label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">📍</span><input type="text" class="rn-form-input" id="rn-city" name="address-level2" autocomplete="address-level2" placeholder="Nombre ciudad/pueblo" required></div>
           </div>
 
           <div class="rn-form-group">
-            <label class="rn-form-label">Correo electrónico</label>
-            <div class="rn-input-wrap"><span class="rn-input-icon">✉️</span><input type="email" class="rn-form-input" id="rn-email" placeholder="correo@ejemplo.com"></div>
+            <label class="rn-form-label" for="rn-email">Correo electrónico</label>
+            <div class="rn-input-wrap"><span class="rn-input-icon">✉️</span><input type="email" class="rn-form-input" id="rn-email" name="email" autocomplete="email" inputmode="email" placeholder="correo@ejemplo.com"></div>
           </div>
-        </div>
+        </form>
 
         <!-- Action Buttons -->
         <div class="rn-actions" id="rn-actions">
@@ -1019,8 +1019,11 @@
     }
   }
 
-  // Validate form
-  function validateForm() {
+  // Validate form. Pass { requireDepartment: false } for WhatsApp path —
+  // those orders can be created without department and completed later.
+  function validateForm(opts) {
+    opts = opts || {};
+    const requireDepartment = opts.requireDepartment !== false;
     let valid = true;
 
     // Clear previous errors
@@ -1050,7 +1053,7 @@
     // Phone confirm is optional - no validation needed
 
     if (!document.getElementById('rn-address').value.trim()) showError('rn-address', 'Requerido');
-    if (!document.getElementById('rn-department').value) showError('rn-department', 'Requerido');
+    if (requireDepartment && !document.getElementById('rn-department').value) showError('rn-department', 'Requerido');
     if (!document.getElementById('rn-city').value.trim()) showError('rn-city', 'Requerido');
 
     if (cart.length === 0) {
@@ -1068,7 +1071,6 @@
 
     orderSubmitting = true;
     clearTimeout(draftTimeout); // Cancel draft timer — order is being submitted
-    stopHeartbeat('completed'); // Stop heartbeat — order is being placed
     const btn = document.getElementById('rn-submit');
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -1142,6 +1144,9 @@
       console.log('[RN] Result:', JSON.stringify(result));
 
       if (result.success) {
+        // Only NOW mark the session as completed — Shopify confirmed the order.
+        stopHeartbeat('completed');
+
         // Track: Purchase
         trackEvent('Purchase', {
           value: data.total,
@@ -1195,10 +1200,12 @@
   // Handle WhatsApp button
   async function handleWhatsApp() {
     if (orderSubmitting) return;
+    // WhatsApp flow: name/phone/address/city required; department optional
+    // (seller completes it via chat).
+    if (!validateForm({ requireDepartment: false })) return;
 
     orderSubmitting = true;
     clearTimeout(draftTimeout);
-    stopHeartbeat('completed');
     const btn = document.getElementById('rn-whatsapp');
     const originalText = btn.innerHTML;
     btn.disabled = true;
@@ -1272,6 +1279,9 @@
       }
 
       if (result.success) {
+        // Only NOW mark the session as completed — Shopify confirmed the order.
+        stopHeartbeat('completed');
+
         // Track: Purchase with real Shopify order ID
         trackEvent('Purchase', {
           value: grandTotal,

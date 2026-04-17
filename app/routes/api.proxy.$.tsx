@@ -203,9 +203,11 @@ async function handleCreateOrder(request: Request, body: any) {
       items,
     } = body;
 
-    if (!firstName || !lastName || !phone || !address || !department || !city || !items?.length) {
+    if (!firstName || !lastName || !phone || !address || !city || !items?.length) {
       return json({ success: false, error: "Faltan campos requeridos" }, { status: 400 });
     }
+
+    const missingDepartment = !department || !String(department).trim();
 
     // Format phone to E.164 (+57 for Colombia)
     const formattedPhone = formatPhoneCO(phone);
@@ -300,7 +302,7 @@ async function handleCreateOrder(request: Request, body: any) {
       `Direccion: ${address}`,
       `Barrio: ${neighborhood || 'N/A'}`,
       `Ciudad: ${city}`,
-      `Departamento: ${department}`,
+      `Departamento: ${department || 'SIN DEPARTAMENTO - completar'}`,
       ``,
       `Productos: ${itemsList}`,
       `Bundle: ${mainQtyTotal} unidad(es) - $${bundlePrice.toLocaleString('es-CO')} COP`,
@@ -337,7 +339,7 @@ async function handleCreateOrder(request: Request, body: any) {
             address1: address,
             address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
             city,
-            province: department,
+            ...(missingDepartment ? {} : { province: department }),
             country: "Colombia",
             countryCode: "CO",
             zip: "000000",
@@ -348,7 +350,7 @@ async function handleCreateOrder(request: Request, body: any) {
             address1: address,
             address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
             city,
-            province: department,
+            ...(missingDepartment ? {} : { province: department }),
             country: "Colombia",
             countryCode: "CO",
             zip: "000000",
@@ -356,7 +358,12 @@ async function handleCreateOrder(request: Request, body: any) {
           email: email || undefined,
           phone: formattedPhone,
           note: orderNote,
-          tags: ["releasitnuevo", "cod", `bundle-${totalQty}`],
+          tags: [
+            "releasitnuevo",
+            "cod",
+            `bundle-${totalQty}`,
+            ...(missingDepartment ? ["sin-departamento"] : []),
+          ],
           financialStatus: "PENDING",
           customAttributes: [
             { key: "Fuente", value: "ReleasitNuevo COD Form" },
@@ -364,7 +371,7 @@ async function handleCreateOrder(request: Request, body: any) {
             { key: "Telefono", value: formattedPhone },
             { key: "Telefono confirmacion", value: formattedPhoneConfirm },
             { key: "Barrio", value: neighborhood || "" },
-            { key: "Direccion completa", value: `${address}, ${neighborhood ? 'Barrio: ' + neighborhood + ', ' : ''}${city}, ${department}` },
+            { key: "Direccion completa", value: `${address}, ${neighborhood ? 'Barrio: ' + neighborhood + ', ' : ''}${city}${department ? ', ' + department : ' (SIN DEPARTAMENTO)'}` },
             { key: "Bundle", value: `${totalQty} unidad(es)` },
             { key: "Total bundle", value: `$${bundlePrice.toLocaleString('es-CO')} COP` },
             { key: "Upsells", value: upsellTotal > 0 ? `$${upsellTotal.toLocaleString('es-CO')} COP` : "Ninguno" },
@@ -433,7 +440,7 @@ async function handleCreateOrder(request: Request, body: any) {
         data: {
           shop, shopifyOrderId: orderId, shopifyOrderName: orderName,
           firstName, lastName, phone, phoneConfirm, email,
-          address: fullAddress, neighborhood, department, city,
+          address, neighborhood, department: department || "", city,
           items: JSON.stringify(items),
           subtotal: bundlePrice, total: grandTotal,
           bundleSize: mainQtyTotal, status: "pending",
