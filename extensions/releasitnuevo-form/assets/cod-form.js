@@ -887,10 +887,12 @@
       overlay.classList.remove('rn-active');
       document.body.style.overflow = '';
 
-      // If user filled at least the phone, create draft NOW (no name required)
+      // If user filled phone OR email, create draft NOW
       var closePhone = document.getElementById('rn-phone');
-      if (closePhone && closePhone.value.trim().length >= 7 &&
-          !draftSent && !orderSubmitting) {
+      var closeEmail = document.getElementById('rn-email');
+      var hasClosePhone = closePhone && closePhone.value.trim().length >= 7;
+      var hasCloseEmail = closeEmail && /^\S+@\S+\.\S+$/.test(closeEmail.value.trim());
+      if ((hasClosePhone || hasCloseEmail) && !draftSent && !orderSubmitting) {
         clearTimeout(draftTimeout);
         createDraft();
         console.log('[RN] Draft created on modal close');
@@ -912,19 +914,22 @@
       if (e.target.id === 'rn-overlay') closeModal();
     });
 
-    // Draft order — triggers 15min after phone is filled, or on modal close
+    // Draft order — triggers 15min after phone OR email is filled, or on modal close
     const firstNameEl = document.getElementById('rn-firstName');
     const phoneEl = document.getElementById('rn-phone');
+    const emailEl = document.getElementById('rn-email');
     var draftTimerStarted = false;
 
     function checkDraftTrigger() {
       if (draftTimerStarted || draftSent) return;
-      var phone = phoneEl.value.trim();
-      // Solo requerimos telefono (>=7 digitos). El nombre es opcional.
-      if (phone && phone.length >= 7) {
+      var phone = phoneEl ? phoneEl.value.trim() : '';
+      var emailVal = emailEl ? emailEl.value.trim() : '';
+      var hasPhone = phone.length >= 7;
+      var hasEmail = /^\S+@\S+\.\S+$/.test(emailVal);
+      // Telefono O email alcanza para arrancar el timer. Nombre opcional.
+      if (hasPhone || hasEmail) {
         draftTimerStarted = true;
         clearTimeout(draftTimeout);
-        // 15 minutes timer
         draftTimeout = setTimeout(function() {
           if (!orderSubmitting && !draftSent) {
             createDraft();
@@ -951,6 +956,7 @@
 
     firstNameEl.addEventListener('input', checkDraftTrigger);
     phoneEl.addEventListener('input', checkDraftTrigger);
+    if (emailEl) emailEl.addEventListener('input', checkDraftTrigger);
 
     // Upsell buttons are now handled dynamically in renderUpsells()
 
@@ -996,8 +1002,10 @@
       totalValue: calcBundlePrice(getTotalQty()) + extraProducts.reduce(function(s, ep) { return s + ep.price; }, 0),
     };
 
-    // Solo necesitamos el telefono - el nombre es opcional para retomar por WhatsApp
-    if (!draftData.phone || draftData.phone.length < 7) {
+    // Necesitamos telefono O email. El nombre es opcional para retomar por WhatsApp/email.
+    var hasPhoneD = draftData.phone && draftData.phone.length >= 7;
+    var hasEmailD = /^\S+@\S+\.\S+$/.test(draftData.email || '');
+    if (!hasPhoneD && !hasEmailD) {
       draftSent = false;
       return;
     }

@@ -471,134 +471,214 @@ async function handleCreateDraft(request: Request, body: any) {
   try {
     const { admin, shop } = await authProxy(request);
 
-    const { firstName, lastName, phone, email, address, city, department, neighborhood, items, extras } = body;
-    if (!phone) {
-      return json({ success: false, error: "Telefono requerido" }, { status: 400 });
+    const {
+      firstName, lastName, phone, phoneConfirm, email,
+      address, city, department, neighborhood,
+      items, extras,
+    } = body;
+
+    // Identity trigger: phone OR email is enough to create the draft
+    const rawPhone = typeof phone === "string" ? phone.trim() : "";
+    const rawEmail = typeof email === "string" ? email.trim() : "";
+    if (!rawPhone && !rawEmail) {
+      return json({ success: false, error: "Telefono o email requerido" }, { status: 400 });
     }
 
-    const formattedPhone = formatPhoneCO(phone);
+    const formattedPhone = rawPhone ? formatPhoneCO(rawPhone) : "";
+    const formattedPhoneConfirm = phoneConfirm ? formatPhoneCO(phoneConfirm) : "";
     const safeFirstName = (firstName && firstName.trim()) || "Sin nombre";
-    const itemsList = (items || []).map((i: any) => `${i.title} x${i.quantity}`).join(", ");
-    const extrasList = (extras || []).map((e: any) => `${e.title}`).join(", ");
+    const safeLastName = (lastName && lastName.trim()) || "";
+    const missingDepartment = !department || !String(department).trim();
+    const missingAddress = !address || !String(address).trim();
 
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || request.headers.get("cf-connecting-ip")
+      || request.headers.get("x-real-ip")
+      || "N/A";
+
+    // Resolve variant IDs (map config keys → real Shopify variant IDs)
+    const resolvedMain = resolveVariantIds(admin, items || []);
+    const resolvedExtras = resolveVariantIds(admin, extras || []);
+
+    // Bundle pricing — same as order
+    const mainQty = resolvedMain.reduce((s: number, i: any) => s + (i.quantity || 1), 0);
+    const bundlePrice = mainQty > 0 ? calcBundlePrice(mainQty) : 0;
+    const mainLineTotals = mainQty > 0 ? distributePrice(resolvedMain, mainQty) : [];
+    const extrasTotal = resolvedExtras.reduce((s: number, e: any) => s + (Number(e.price) || 0), 0);
+    const grandTotal = bundlePrice + extrasTotal;
+
+    const itemsList = resolvedMain.map((i: any) => `${i.title} x${i.quantity}`).join(", ");
+    const extrasList = resolvedExtras.map((e: any) => {
+      const p = Number(e.price) || 0;
+      return p > 0 ? `${e.title} ($${p.toLocaleString('es-CO')})` : e.title;
+    }).join(", ");
+
+    // Build line items with bundle pricing
+    const lineItems: any[] = [];
+    resolvedMain.forEach((item: any, idx: number) => {
+      const vid = String(item.variantId || "");
+      const qty = item.quantity || 1;
+      const lineTotal = mainLineTotals[idx] || 0;
+      const pricePerUnit = qty > 0 ? Math.round(lineTotal / qty) : 0;
+      const hasRealId = vid && (vid.startsWith("gid://") || /^\d+$/.test(vid));
+      if (hasRealId) {
+        lineItems.push({
+          variantId: vid.startsWith("gid://") ? vid : `gid://shopify/ProductVariant/${vid}`,
+          quantity: qty,
+          originalUnitPrice: String(pricePerUnit),
+        });
+      } else {
+        lineItems.push({
+          title: item.title || "Producto",
+          quantity: qty,
+          originalUnitPrice: String(pricePerUnit),
+        });
+      }
+    });
+
+    resolvedExtras.forEach((ex: any) => {
+      const vid = String(ex.variantId || "");
+      const price = Number(ex.price) || 0;
+      const hasRealId = vid && (vid.startsWith("gid://") || /^\d+$/.test(vid));
+      if (hasRealId) {
+        lineItems.push({
+          variantId: vid.startsWith("gid://") ? vid : `gid://shopify/ProductVariant/${vid}`,
+          quantity: 1,
+          originalUnitPrice: String(price),
+        });
+      } else {
+        lineItems.push({
+          title: ex.title || "Extra",
+          quantity: 1,
+          originalUnitPrice: String(price),
+        });
+      }
+    });
+
+    if (lineItems.length === 0) {
+      lineItems.push({
+        title: "Carrito abandonado (sin productos)",
+        quantity: 1,
+        originalUnitPrice: "0",
+      });
+    }
+
+    // Find or create customer — tolerant: works with phone alone, email alone, or both
+    let customerId: string | null = null;
+    try {
+      customerId = await findOrCreateCustomer(admin, {
+        firstName: safeFirstName,
+        lastName: safeLastName || "Sin apellido",
+        phone: formattedPhone,
+        email: rawEmail || undefined,
+      });
+      console.log("[CreateDraft] Customer ID:", customerId);
+    } catch (e: any) {
+      console.error("[CreateDraft] Customer lookup failed (non-fatal):", e.message);
+    }
+
+    // Detailed note — mirrors order note
     const noteLines = [
       `Carrito abandonado - ReleasitNuevo`,
       ``,
-      `Cliente: ${safeFirstName} ${lastName || ''}`,
-      `Tel: ${formattedPhone}`,
-      email ? `Email: ${email}` : '',
-      address ? `Direccion: ${address}` : '',
+      `Cliente: ${safeFirstName} ${safeLastName}`.trim(),
+      formattedPhone ? `Telefono: ${formattedPhone}` : '',
+      formattedPhoneConfirm ? `Tel. confirmacion: ${formattedPhoneConfirm}` : '',
+      rawEmail ? `Email: ${rawEmail}` : '',
+      ``,
+      address ? `Direccion: ${address}` : 'Direccion: (pendiente)',
       neighborhood ? `Barrio: ${neighborhood}` : '',
       city ? `Ciudad: ${city}` : '',
-      department ? `Depto: ${department}` : '',
+      `Departamento: ${department || 'SIN DEPARTAMENTO - completar'}`,
       ``,
       `Productos: ${itemsList || 'N/A'}`,
       extrasList ? `Extras: ${extrasList}` : '',
+      mainQty > 0 ? `Bundle: ${mainQty} unidad(es) - $${bundlePrice.toLocaleString('es-CO')} COP` : '',
+      extrasTotal > 0 ? `Extras total: $${extrasTotal.toLocaleString('es-CO')} COP` : '',
+      grandTotal > 0 ? `Total estimado: $${grandTotal.toLocaleString('es-CO')} COP` : '',
+      ``,
+      `IP: ${clientIp}`,
+      `Fecha: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`,
     ].filter(Boolean).join("\n");
 
+    // Shipping address — include only if we have anything to put in it
+    const hasShipping = !!(address || city || department || neighborhood);
+    const shippingAddress = hasShipping ? {
+      firstName: safeFirstName,
+      lastName: safeLastName || ".",
+      ...(formattedPhone ? { phone: formattedPhone } : {}),
+      address1: address || "Pendiente",
+      ...(neighborhood ? { address2: `Barrio: ${neighborhood}` } : {}),
+      city: city || "Pendiente",
+      ...(missingDepartment ? {} : { province: department }),
+      country: "Colombia",
+      countryCode: "CO",
+      zip: "000000",
+    } : undefined;
+
+    const tags = [
+      "releasitnuevo",
+      "abandono",
+      ...(mainQty > 0 ? [`bundle-${mainQty}`] : []),
+      ...(missingDepartment ? ["sin-departamento"] : []),
+      ...(missingAddress ? ["sin-direccion"] : []),
+      ...(!firstName ? ["sin-nombre"] : []),
+      ...(!rawEmail ? ["sin-email"] : []),
+      ...(!rawPhone ? ["sin-telefono"] : []),
+    ];
+
+    const customAttributes = [
+      { key: "Fuente", value: "ReleasitNuevo Abandono" },
+      { key: "Telefono", value: formattedPhone || "N/A" },
+      { key: "Telefono confirmacion", value: formattedPhoneConfirm || "" },
+      { key: "Email", value: rawEmail || "" },
+      { key: "Barrio", value: neighborhood || "" },
+      { key: "Direccion completa", value: address
+        ? `${address}${neighborhood ? ', Barrio: ' + neighborhood : ''}${city ? ', ' + city : ''}${department ? ', ' + department : ' (SIN DEPARTAMENTO)'}`
+        : "SIN DIRECCION" },
+      { key: "Bundle", value: mainQty > 0 ? `${mainQty} unidad(es)` : "0" },
+      { key: "Total bundle", value: `$${bundlePrice.toLocaleString('es-CO')} COP` },
+      { key: "Extras", value: extrasTotal > 0 ? `$${extrasTotal.toLocaleString('es-CO')} COP` : "Ninguno" },
+      { key: "Total estimado", value: `$${grandTotal.toLocaleString('es-CO')} COP` },
+      { key: "IP", value: clientIp },
+      { key: "productos", value: itemsList || "N/A" },
+      { key: "extras_list", value: extrasList || "Ninguno" },
+    ];
+
     let draftOrderId = "";
-
     try {
-      // Build line items from cart items - Shopify requires at least one line item
-      const lineItems: any[] = [];
-      if (items && items.length > 0) {
-        for (const item of items) {
-          if (item.variantId) {
-            // Use variant ID if available
-            const gid = item.variantId.toString().includes("gid://")
-              ? item.variantId
-              : `gid://shopify/ProductVariant/${item.variantId}`;
-            lineItems.push({
-              variantId: gid,
-              quantity: item.quantity || 1,
-            });
-          } else {
-            // Fallback: custom line item with title and price 0
-            lineItems.push({
-              title: item.title || "Producto",
-              quantity: item.quantity || 1,
-              originalUnitPrice: "0.00",
-            });
-          }
-        }
-      }
-
-      // Add extras as custom line items
-      if (extras && extras.length > 0) {
-        for (const extra of extras) {
-          if (extra.variantId) {
-            const gid = extra.variantId.toString().includes("gid://")
-              ? extra.variantId
-              : `gid://shopify/ProductVariant/${extra.variantId}`;
-            lineItems.push({
-              variantId: gid,
-              quantity: 1,
-            });
-          } else {
-            lineItems.push({
-              title: extra.title || "Extra",
-              quantity: 1,
-              originalUnitPrice: "0.00",
-            });
-          }
-        }
-      }
-
-      // If no line items at all, add a placeholder so Shopify accepts the draft
-      if (lineItems.length === 0) {
-        lineItems.push({
-          title: "Carrito abandonado (sin productos)",
-          quantity: 1,
-          originalUnitPrice: "0.00",
-        });
-      }
+      const input: any = {
+        note: noteLines,
+        tags,
+        lineItems,
+        customAttributes,
+        ...(rawEmail ? { email: rawEmail } : {}),
+        ...(formattedPhone ? { phone: formattedPhone } : {}),
+        ...(shippingAddress ? { shippingAddress } : {}),
+        ...(customerId ? { purchasingEntity: { customerId } } : {}),
+      };
 
       const draftResponse = await admin.graphql(`
         mutation draftOrderCreate($input: DraftOrderInput!) {
           draftOrderCreate(input: $input) {
-            draftOrder { id }
+            draftOrder { id, name }
             userErrors { field, message }
           }
         }
-      `, {
-        variables: {
-          input: {
-            note: noteLines,
-            tags: ["releasitnuevo", "abandono"],
-            lineItems,
-            shippingAddress: {
-              firstName: safeFirstName, lastName: lastName || ".",
-              phone: formattedPhone,
-              address1: address || "Pendiente",
-              address2: neighborhood ? `Barrio: ${neighborhood}` : undefined,
-              city: city || "Pendiente",
-              province: department || "Pendiente",
-              country: "Colombia", countryCode: "CO", zip: "000000",
-            },
-            customAttributes: [
-              { key: "source", value: "releasitnuevo-abandono" },
-              { key: "productos", value: itemsList || "N/A" },
-              { key: "extras", value: extrasList || "Ninguno" },
-            ],
-          },
-        },
-      });
+      `, { variables: { input } });
 
       const draftData = await draftResponse.json();
       const draftResult = draftData.data?.draftOrderCreate;
 
       if (draftResult?.userErrors?.length > 0) {
         console.error("[CreateDraft] Shopify userErrors:", JSON.stringify(draftResult.userErrors));
-        // Still try to get the ID in case it was partially created
-        draftOrderId = draftResult?.draftOrder?.id || "";
-      } else {
-        draftOrderId = draftResult?.draftOrder?.id || "";
       }
+      draftOrderId = draftResult?.draftOrder?.id || "";
 
       if (draftOrderId) {
         console.log("[CreateDraft] Shopify draft created:", draftOrderId);
       } else {
-        console.error("[CreateDraft] Shopify draft NOT created - no ID returned. Response:", JSON.stringify(draftData));
+        console.error("[CreateDraft] Shopify draft NOT created. Response:", JSON.stringify(draftData));
       }
     } catch (shopifyErr: any) {
       console.error("[CreateDraft] Shopify draft creation failed:", shopifyErr.message);
@@ -610,9 +690,13 @@ async function handleCreateDraft(request: Request, body: any) {
         data: {
           shop,
           shopifyDraftOrderId: draftOrderId || null,
-          firstName: safeFirstName, lastName: lastName || "",
+          firstName: safeFirstName,
+          lastName: safeLastName,
           phone: formattedPhone,
-          items: JSON.stringify({ items: items || [], extras: extras || [], address, city, department, neighborhood, email }),
+          items: JSON.stringify({
+            items: items || [], extras: extras || [],
+            address, city, department, neighborhood, email: rawEmail,
+          }),
           status: "open",
         },
       });
