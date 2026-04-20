@@ -166,18 +166,17 @@ model WhatsAppClick {
 
 // Active cart sessions (heartbeat-based real-time tracking)
 model ActiveSession {
-  id                  String   @id // sessionId from frontend
-  shop                String
-  page                String?
-  userAgent           String?
-  ip                  String?
-  formData            String?  // JSON: name, phone, email, city, etc.
-  cartData            String?  // JSON: products in cart
-  extrasData          String?  // JSON: upsell extras
-  status              String   @default("active") // active, idle, closed
-  shopifyDraftOrderId String?  // Set when a draft has been auto-created for this session (dedup)
-  lastSeenAt          DateTime @default(now())
-  createdAt           DateTime @default(now())
+  id          String   @id // sessionId from frontend
+  shop        String
+  page        String?
+  userAgent   String?
+  ip          String?
+  formData    String?  // JSON: name, phone, email, city, etc.
+  cartData    String?  // JSON: products in cart
+  extrasData  String?  // JSON: upsell extras
+  status      String   @default("active") // active, idle, closed
+  lastSeenAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([shop])
   @@index([lastSeenAt])

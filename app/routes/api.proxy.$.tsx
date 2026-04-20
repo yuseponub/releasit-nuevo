@@ -892,14 +892,33 @@ async function handleHeartbeat(request: Request, body: any) {
     }).catch(() => {});
 
     // Auto-create draft when session closes (page unload / tab close).
-    // Dedup via ActiveSession.shopifyDraftOrderId so we only create once per session.
+    // Dedup: check DraftOrder table for a recent draft with same phone (last 2h).
+    // Email-only sessions skip dedup (rare, acceptable risk of one duplicate).
     if (status === "closed" && formData) {
       const phoneOk = typeof formData.phone === "string" && formData.phone.trim().length >= 7;
       const emailOk = typeof formData.email === "string" && /^\S+@\S+\.\S+$/.test(formData.email.trim());
       if (phoneOk || emailOk) {
         try {
-          const session = await db.activeSession.findUnique({ where: { id: sessionId } });
-          if (!session?.shopifyDraftOrderId) {
+          let duplicate = false;
+          if (phoneOk) {
+            const formattedPhone = formatPhoneCO(formData.phone.trim());
+            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+            const existing = await db.draftOrder.findFirst({
+              where: {
+                shop,
+                phone: formattedPhone,
+                createdAt: { gte: twoHoursAgo },
+                shopifyDraftOrderId: { not: null },
+              },
+              select: { shopifyDraftOrderId: true },
+            });
+            if (existing) {
+              duplicate = true;
+              console.log("[Heartbeat] Auto-draft skipped, dup found:", existing.shopifyDraftOrderId);
+            }
+          }
+
+          if (!duplicate) {
             const { admin } = await authProxy(request);
             const draftBody = {
               ...formData,
@@ -908,10 +927,6 @@ async function handleHeartbeat(request: Request, body: any) {
             };
             const result = await createDraftFromFormData(admin, shop, draftBody, clientIp || "N/A");
             if (result.draftOrderId) {
-              await db.activeSession.update({
-                where: { id: sessionId },
-                data: { shopifyDraftOrderId: result.draftOrderId },
-              });
               console.log("[Heartbeat] Auto-draft created for session", sessionId, "→", result.draftOrderId);
             } else if (result.error) {
               console.warn("[Heartbeat] Auto-draft skipped:", result.error);
