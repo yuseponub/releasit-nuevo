@@ -883,18 +883,23 @@
 
   // Close modal
   function closeModal() {
-    stopHeartbeat('closed');
+    // Decide first whether we're going to create a draft explicitly — if yes,
+    // signal 'completed' to the heartbeat so the backend does not ALSO auto-create
+    // one on its own (which was causing duplicate drafts).
+    var closePhone = document.getElementById('rn-phone');
+    var closeEmail = document.getElementById('rn-email');
+    var hasClosePhone = closePhone && closePhone.value.trim().length >= 7;
+    var hasCloseEmail = closeEmail && /^\S+@\S+\.\S+$/.test(closeEmail.value.trim());
+    var willCreateDraft = (hasClosePhone || hasCloseEmail) && !draftSent && !orderSubmitting;
+
+    stopHeartbeat(willCreateDraft ? 'completed' : 'closed');
+
     const overlay = document.getElementById('rn-overlay');
     if (overlay) {
       overlay.classList.remove('rn-active');
       document.body.style.overflow = '';
 
-      // If user filled phone OR email, create draft NOW
-      var closePhone = document.getElementById('rn-phone');
-      var closeEmail = document.getElementById('rn-email');
-      var hasClosePhone = closePhone && closePhone.value.trim().length >= 7;
-      var hasCloseEmail = closeEmail && /^\S+@\S+\.\S+$/.test(closeEmail.value.trim());
-      if ((hasClosePhone || hasCloseEmail) && !draftSent && !orderSubmitting) {
+      if (willCreateDraft) {
         clearTimeout(draftTimeout);
         createDraft();
         console.log('[RN] Draft created on modal close');
