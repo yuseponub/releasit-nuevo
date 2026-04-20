@@ -470,7 +470,31 @@ async function handleCreateOrder(request: Request, body: any) {
 async function handleCreateDraft(request: Request, body: any) {
   try {
     const { admin, shop } = await authProxy(request);
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+      || request.headers.get("cf-connecting-ip")
+      || request.headers.get("x-real-ip")
+      || "N/A";
 
+    const result = await createDraftFromFormData(admin, shop, body, clientIp);
+    if (result.error) {
+      return json({ success: false, error: result.error }, { status: result.status || 500 });
+    }
+    return json({ success: true, draftOrderId: result.draftOrderId });
+  } catch (e: any) {
+    console.error("[CreateDraft] FATAL:", e.message, e.stack);
+    return json({ success: false, error: "Error: " + e.message }, { status: 500 });
+  }
+}
+
+// Reusable draft creation — called by /create-draft and by heartbeat on close.
+// Returns { draftOrderId, error?, status? }. Never throws.
+async function createDraftFromFormData(
+  admin: any,
+  shop: string,
+  body: any,
+  clientIp: string,
+): Promise<{ draftOrderId: string; error?: string; status?: number }> {
+  try {
     const {
       firstName, lastName, phone, phoneConfirm, email,
       address, city, department, neighborhood,
@@ -481,7 +505,7 @@ async function handleCreateDraft(request: Request, body: any) {
     const rawPhone = typeof phone === "string" ? phone.trim() : "";
     const rawEmail = typeof email === "string" ? email.trim() : "";
     if (!rawPhone && !rawEmail) {
-      return json({ success: false, error: "Telefono o email requerido" }, { status: 400 });
+      return { draftOrderId: "", error: "Telefono o email requerido", status: 400 };
     }
 
     const formattedPhone = rawPhone ? formatPhoneCO(rawPhone) : "";
@@ -490,11 +514,6 @@ async function handleCreateDraft(request: Request, body: any) {
     const safeLastName = (lastName && lastName.trim()) || "";
     const missingDepartment = !department || !String(department).trim();
     const missingAddress = !address || !String(address).trim();
-
-    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-      || request.headers.get("cf-connecting-ip")
-      || request.headers.get("x-real-ip")
-      || "N/A";
 
     // Resolve variant IDs (map config keys → real Shopify variant IDs)
     const resolvedMain = resolveVariantIds(admin, items || []);
@@ -710,10 +729,10 @@ async function handleCreateDraft(request: Request, body: any) {
       });
     } catch (_) {}
 
-    return json({ success: true, draftOrderId });
+    return { draftOrderId };
   } catch (e: any) {
-    console.error("[CreateDraft] FATAL:", e.message, e.stack);
-    return json({ success: false, error: "Error: " + e.message }, { status: 500 });
+    console.error("[CreateDraft] helper error:", e.message, e.stack);
+    return { draftOrderId: "", error: "Error: " + e.message };
   }
 }
 
@@ -871,6 +890,38 @@ async function handleHeartbeat(request: Request, body: any) {
       where: { lastSeenAt: { lt: new Date(Date.now() - 5 * 60 * 1000) }, status: "active" },
       data: { status: "closed" },
     }).catch(() => {});
+
+    // Auto-create draft when session closes (page unload / tab close).
+    // Dedup via ActiveSession.shopifyDraftOrderId so we only create once per session.
+    if (status === "closed" && formData) {
+      const phoneOk = typeof formData.phone === "string" && formData.phone.trim().length >= 7;
+      const emailOk = typeof formData.email === "string" && /^\S+@\S+\.\S+$/.test(formData.email.trim());
+      if (phoneOk || emailOk) {
+        try {
+          const session = await db.activeSession.findUnique({ where: { id: sessionId } });
+          if (!session?.shopifyDraftOrderId) {
+            const { admin } = await authProxy(request);
+            const draftBody = {
+              ...formData,
+              items: cartData || [],
+              extras: extrasData || [],
+            };
+            const result = await createDraftFromFormData(admin, shop, draftBody, clientIp || "N/A");
+            if (result.draftOrderId) {
+              await db.activeSession.update({
+                where: { id: sessionId },
+                data: { shopifyDraftOrderId: result.draftOrderId },
+              });
+              console.log("[Heartbeat] Auto-draft created for session", sessionId, "→", result.draftOrderId);
+            } else if (result.error) {
+              console.warn("[Heartbeat] Auto-draft skipped:", result.error);
+            }
+          }
+        } catch (draftErr: any) {
+          console.error("[Heartbeat] Auto-draft failed (non-fatal):", draftErr.message);
+        }
+      }
+    }
 
     return json({ success: true });
   } catch (e: any) {

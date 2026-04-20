@@ -46,13 +46,15 @@
     }
     var firstName = getVal('rn-firstName');
     var phone = getVal('rn-phone');
-    // Only return data if there's something meaningful
-    if (!firstName && !phone) return null;
+    var emailVal = getVal('rn-email');
+    // Only return data if there's something meaningful (identity or name)
+    if (!firstName && !phone && !emailVal) return null;
     return {
       firstName: firstName,
       lastName: getVal('rn-lastName'),
       phone: phone,
-      email: getVal('rn-email'),
+      phoneConfirm: getVal('rn-phoneConfirm'),
+      email: emailVal,
       address: getVal('rn-address'),
       neighborhood: getVal('rn-neighborhood'),
       department: getVal('rn-department'),
