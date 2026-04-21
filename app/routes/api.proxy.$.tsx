@@ -885,63 +885,113 @@ async function handleHeartbeat(request: Request, body: any) {
       },
     });
 
-    // Mark old active sessions as closed (not delete — keep for history)
-    db.activeSession.updateMany({
-      where: { lastSeenAt: { lt: new Date(Date.now() - 5 * 60 * 1000) }, status: "active" },
-      data: { status: "closed" },
-    }).catch(() => {});
-
-    // Auto-create draft when session closes (page unload / tab close).
-    // Dedup: check DraftOrder table for a recent draft with same phone (last 2h).
-    // Email-only sessions skip dedup (rare, acceptable risk of one duplicate).
+    // Auto-create draft when session explicitly closes (pagehide / tab close).
     if (status === "closed" && formData) {
-      const phoneOk = typeof formData.phone === "string" && formData.phone.trim().length >= 7;
-      const emailOk = typeof formData.email === "string" && /^\S+@\S+\.\S+$/.test(formData.email.trim());
-      if (phoneOk || emailOk) {
-        try {
-          let duplicate = false;
-          if (phoneOk) {
-            const formattedPhone = formatPhoneCO(formData.phone.trim());
-            const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-            const existing = await db.draftOrder.findFirst({
-              where: {
-                shop,
-                phone: formattedPhone,
-                createdAt: { gte: twoHoursAgo },
-                shopifyDraftOrderId: { not: null },
-              },
-              select: { shopifyDraftOrderId: true },
-            });
-            if (existing) {
-              duplicate = true;
-              console.log("[Heartbeat] Auto-draft skipped, dup found:", existing.shopifyDraftOrderId);
-            }
-          }
+      await tryAutoDraft(shop, sessionId, formData, cartData || [], extrasData || [], clientIp, "heartbeat-close");
+    }
 
-          if (!duplicate) {
-            const { admin } = await authProxy(request);
-            const draftBody = {
-              ...formData,
-              items: cartData || [],
-              extras: extrasData || [],
-            };
-            const result = await createDraftFromFormData(admin, shop, draftBody, clientIp || "N/A");
-            if (result.draftOrderId) {
-              console.log("[Heartbeat] Auto-draft created for session", sessionId, "→", result.draftOrderId);
-            } else if (result.error) {
-              console.warn("[Heartbeat] Auto-draft skipped:", result.error);
-            }
-          }
-        } catch (draftErr: any) {
-          console.error("[Heartbeat] Auto-draft failed (non-fatal):", draftErr.message);
-        }
-      }
+    // Throttled stale-session sweep: every ~60s, find sessions that stopped
+    // sending heartbeats (mobile crash, closed laptop, bfcache) and auto-create
+    // drafts for them. This catches the case where `pagehide` never fired.
+    const now = Date.now();
+    if (now - lastSweepAt > 60_000) {
+      lastSweepAt = now;
+      sweepStaleSessions(shop, clientIp).catch((e) => {
+        console.error("[HeartbeatSweep] unexpected:", e?.message);
+      });
     }
 
     return json({ success: true });
   } catch (e: any) {
     console.error("[Heartbeat] Error:", e.message);
     return json({ success: false });
+  }
+}
+
+let lastSweepAt = 0;
+
+async function sweepStaleSessions(shop: string, fallbackIp: string) {
+  const now = Date.now();
+  const staleThreshold = new Date(now - 5 * 60 * 1000);
+
+  // Find stale active sessions with form data
+  const stale = await db.activeSession.findMany({
+    where: {
+      shop,
+      status: "active",
+      lastSeenAt: { lt: staleThreshold },
+      formData: { not: null },
+    },
+    take: 50,
+  });
+
+  console.log("[HeartbeatSweep]", stale.length, "stale sessions to process for", shop);
+
+  for (const s of stale) {
+    let form: any = null;
+    try { form = JSON.parse(s.formData || "null"); } catch {}
+    if (form) {
+      let items: any[] = [];
+      let extras: any[] = [];
+      try { items = JSON.parse(s.cartData || "[]"); } catch {}
+      try { extras = JSON.parse(s.extrasData || "[]"); } catch {}
+      await tryAutoDraft(shop, s.id, form, items, extras, s.ip || fallbackIp, "sweep");
+    }
+  }
+
+  // Mark them all closed regardless of draft outcome
+  await db.activeSession.updateMany({
+    where: { shop, status: "active", lastSeenAt: { lt: staleThreshold } },
+    data: { status: "closed" },
+  });
+}
+
+// Create draft for a session if it has identity and no recent duplicate.
+// Phone-based dedup with 2h window. Never throws.
+async function tryAutoDraft(
+  shop: string,
+  sessionId: string,
+  form: any,
+  items: any[],
+  extras: any[],
+  clientIp: string,
+  tag: string,
+) {
+  try {
+    const phoneOk = typeof form.phone === "string" && form.phone.trim().length >= 7;
+    const emailOk = typeof form.email === "string" && /^\S+@\S+\.\S+$/.test(form.email.trim());
+    if (!phoneOk && !emailOk) {
+      console.log(`[AutoDraft:${tag}] skip (no identity) session=${sessionId}`);
+      return;
+    }
+
+    if (phoneOk) {
+      const formattedPhone = formatPhoneCO(form.phone.trim());
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+      const existing = await db.draftOrder.findFirst({
+        where: {
+          shop,
+          phone: formattedPhone,
+          createdAt: { gte: twoHoursAgo },
+          shopifyDraftOrderId: { not: null },
+        },
+        select: { shopifyDraftOrderId: true },
+      });
+      if (existing) {
+        console.log(`[AutoDraft:${tag}] skip (dup phone) session=${sessionId} existing=${existing.shopifyDraftOrderId}`);
+        return;
+      }
+    }
+
+    const admin = await getAdmin(shop);
+    const result = await createDraftFromFormData(admin, shop, { ...form, items, extras }, clientIp || "N/A");
+    if (result.draftOrderId) {
+      console.log(`[AutoDraft:${tag}] CREATED session=${sessionId} draft=${result.draftOrderId}`);
+    } else if (result.error) {
+      console.warn(`[AutoDraft:${tag}] not-created session=${sessionId} err=${result.error}`);
+    }
+  } catch (e: any) {
+    console.error(`[AutoDraft:${tag}] failed session=${sessionId} err=${e?.message}`);
   }
 }
 
