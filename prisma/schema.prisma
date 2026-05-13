@@ -49,6 +49,8 @@ model CodOrder {
   total            Int      // Price in COP cents
   bundleSize       Int      // Total number of products
   status           String   @default("pending") // pending, confirmed, fulfilled, cancelled
+  attributionSource String? // "tiktok" | "facebook" | "mixto" | "directo"
+  attributionData   String? // JSON: { fbc, fbp, ttp, ttclid, fbclid, sourceUrl, reason }
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -68,6 +70,8 @@ model DraftOrder {
   items                 String?  // JSON string of cart items at time of abandonment
   status                String   @default("open") // open, invoice_sent, completed
   convertedToOrderId    String?  // If converted to a full order
+  attributionSource     String?  // "tiktok" | "facebook" | "mixto" | "directo"
+  attributionData       String?  // JSON: { fbc, fbp, ttp, ttclid, fbclid, sourceUrl, reason }
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -166,17 +170,19 @@ model WhatsAppClick {
 
 // Active cart sessions (heartbeat-based real-time tracking)
 model ActiveSession {
-  id          String   @id // sessionId from frontend
-  shop        String
-  page        String?
-  userAgent   String?
-  ip          String?
-  formData    String?  // JSON: name, phone, email, city, etc.
-  cartData    String?  // JSON: products in cart
-  extrasData  String?  // JSON: upsell extras
-  status      String   @default("active") // active, idle, closed
-  lastSeenAt  DateTime @default(now())
-  createdAt   DateTime @default(now())
+  id                String   @id // sessionId from frontend
+  shop              String
+  page              String?
+  userAgent         String?
+  ip                String?
+  formData          String?  // JSON: name, phone, email, city, etc.
+  cartData          String?  // JSON: products in cart
+  extrasData        String?  // JSON: upsell extras
+  status            String   @default("active") // active, idle, closed
+  attributionSource String?  // "tiktok" | "facebook" | "mixto" | "directo"
+  attributionData   String?  // JSON: { fbc, fbp, ttp, ttclid, fbclid, sourceUrl, reason }
+  lastSeenAt        DateTime @default(now())
+  createdAt         DateTime @default(now())
 
   @@index([shop])
   @@index([lastSeenAt])

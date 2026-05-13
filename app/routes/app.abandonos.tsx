@@ -111,6 +111,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         items: itemsList,
         location: extraInfo,
         status: d.status,
+        attributionSource: d.attributionSource || null,
         convertedToOrderId: d.convertedToOrderId || null,
         createdAt: d.createdAt.toISOString(),
       };
@@ -153,11 +154,23 @@ export default function Abandonos() {
     return <Badge tone={c.tone}>{c.label}</Badge>;
   };
 
+  const attributionBadge = (source: string | null) => {
+    const config: Record<string, { tone: any; label: string }> = {
+      tiktok:   { tone: "critical", label: "TikTok" },
+      facebook: { tone: "info",     label: "Facebook" },
+      mixto:    { tone: "magic",    label: "Mixto" },
+      directo:  { tone: "new",      label: "Directo" },
+    };
+    const c = source ? config[source] : null;
+    return c ? <Badge tone={c.tone}>{c.label}</Badge> : <Badge tone="new">—</Badge>;
+  };
+
   const rows = drafts.map((draft: any) => [
     draft.customer,
     draft.phone,
     draft.items,
     draft.location,
+    attributionBadge(draft.attributionSource),
     statusBadge(draft.status),
     new Date(draft.createdAt).toLocaleString("es-CO", { timeZone: "America/Bogota" }),
     <Button
@@ -243,10 +256,10 @@ export default function Abandonos() {
                 <>
                   <DataTable
                     columnContentTypes={[
-                      "text", "text", "text", "text", "text", "text", "text"
+                      "text", "text", "text", "text", "text", "text", "text", "text"
                     ]}
                     headings={[
-                      "Cliente", "Telefono", "Productos", "Ubicacion", "Estado", "Fecha", "Accion"
+                      "Cliente", "Telefono", "Productos", "Ubicacion", "Atribución", "Estado", "Fecha", "Accion"
                     ]}
                     rows={rows}
                   />

@@ -192,6 +192,97 @@ async function handleGetProducts(request: Request) {
   }
 }
 
+// ===================== ATTRIBUTION =====================
+//
+// Determines the marketing source of a session/order using a last-click model.
+// URL click_ids (ttclid/fbclid) take precedence over cookies — if the user
+// arrived via a TikTok ad URL today, that wins over an FB cookie from days ago.
+//
+// Returns: { source, data, tags }
+//   source: "tiktok" | "facebook" | "mixto" | "directo"
+//   data:   JSON-serializable details for storage / debugging
+//   tags:   string[] for Shopify order tags
+type AttributionResult = {
+  source: "tiktok" | "facebook" | "mixto" | "directo";
+  reason: string;
+  data: Record<string, string>;
+  tags: string[];
+};
+
+function classifyAttribution(input: {
+  fbc?: string;
+  fbp?: string;
+  ttp?: string;
+  ttclid?: string;
+  sourceUrl?: string;
+}): AttributionResult {
+  const { fbc, fbp, ttp, ttclid, sourceUrl } = input;
+
+  // Parse URL params from sourceUrl to detect direct click_ids
+  let urlTtclid = "";
+  let urlFbclid = "";
+  try {
+    if (sourceUrl) {
+      const u = new URL(sourceUrl);
+      urlTtclid = u.searchParams.get("ttclid") || "";
+      urlFbclid = u.searchParams.get("fbclid") || "";
+    }
+  } catch {}
+
+  const data: Record<string, string> = {};
+  if (fbc) data.fbc = fbc;
+  if (fbp) data.fbp = fbp;
+  if (ttp) data.ttp = ttp;
+  if (ttclid) data.ttclid = ttclid;
+  if (urlFbclid) data.fbclid = urlFbclid;
+  if (sourceUrl) data.sourceUrl = sourceUrl;
+
+  // 1. URL ttclid present → TikTok direct click (wins regardless of fb cookies)
+  if (urlTtclid) {
+    return { source: "tiktok", reason: "url_ttclid", data, tags: ["attr-tiktok"] };
+  }
+
+  // 2. URL fbclid present → Facebook direct click
+  if (urlFbclid) {
+    return { source: "facebook", reason: "url_fbclid", data, tags: ["attr-facebook"] };
+  }
+
+  // 3. Persisted ttclid cookie (we set this when ttclid is in URL — 30d window)
+  if (ttclid) {
+    return { source: "tiktok", reason: "cookie_ttclid", data, tags: ["attr-tiktok"] };
+  }
+
+  // 4. _fbc cookie (Facebook click id, format fb.1.<ts>.<click_id>)
+  if (fbc) {
+    return { source: "facebook", reason: "cookie_fbc", data, tags: ["attr-facebook"] };
+  }
+
+  // 5. Both pixel cookies but no click → mixto (visited both ecosystems)
+  if (ttp && fbp) {
+    return { source: "mixto", reason: "both_pixel_cookies", data, tags: ["attr-mixto"] };
+  }
+
+  // 6/7. Only one pixel cookie
+  if (ttp) {
+    return { source: "tiktok", reason: "pixel_ttp_only", data, tags: ["attr-tiktok"] };
+  }
+  if (fbp) {
+    return { source: "facebook", reason: "pixel_fbp_only", data, tags: ["attr-facebook"] };
+  }
+
+  // 8. Nothing → direct/organic
+  return { source: "directo", reason: "no_signals", data, tags: ["attr-directo"] };
+}
+
+function sourceLabel(source: string): string {
+  switch (source) {
+    case "tiktok": return "TikTok";
+    case "facebook": return "Facebook";
+    case "mixto": return "Mixto (FB + TikTok)";
+    default: return "Directo / Orgánico";
+  }
+}
+
 async function handleCreateOrder(request: Request, body: any) {
   try {
     const { admin, shop } = await authProxy(request);
@@ -201,6 +292,7 @@ async function handleCreateOrder(request: Request, body: any) {
       firstName, lastName, phone, phoneConfirm,
       email, address, neighborhood, department, city,
       items,
+      fbc, fbp, ttp, ttclid, sourceUrl,
     } = body;
 
     if (!firstName || !lastName || !phone || !address || !city || !items?.length) {
@@ -208,6 +300,7 @@ async function handleCreateOrder(request: Request, body: any) {
     }
 
     const missingDepartment = !department || !String(department).trim();
+    const attr = classifyAttribution({ fbc, fbp, ttp, ttclid, sourceUrl });
 
     // Format phone to E.164 (+57 for Colombia)
     const formattedPhone = formatPhoneCO(phone);
@@ -361,12 +454,16 @@ async function handleCreateOrder(request: Request, body: any) {
           tags: [
             "releasitnuevo",
             "cod",
+            ...attr.tags,
             `bundle-${totalQty}`,
             ...(missingDepartment ? ["sin-departamento"] : []),
           ],
           financialStatus: "PENDING",
           customAttributes: [
             { key: "Fuente", value: "ReleasitNuevo COD Form" },
+            { key: "Atribución", value: sourceLabel(attr.source) },
+            ...(attr.data.ttclid ? [{ key: "TikTok Click ID", value: attr.data.ttclid }] : []),
+            ...(attr.data.fbc ? [{ key: "Facebook Click ID", value: attr.data.fbc }] : []),
             { key: "Metodo de pago", value: "Contra entrega (COD)" },
             { key: "Telefono", value: formattedPhone },
             { key: "Telefono confirmacion", value: formattedPhoneConfirm },
@@ -444,6 +541,8 @@ async function handleCreateOrder(request: Request, body: any) {
           items: JSON.stringify(items),
           subtotal: bundlePrice, total: grandTotal,
           bundleSize: mainQtyTotal, status: "pending",
+          attributionSource: attr.source,
+          attributionData: JSON.stringify(attr.data),
         },
       });
     } catch (dbErr: any) {
@@ -493,13 +592,18 @@ async function createDraftFromFormData(
   shop: string,
   body: any,
   clientIp: string,
+  attribution?: AttributionResult,
 ): Promise<{ draftOrderId: string; error?: string; status?: number }> {
   try {
     const {
       firstName, lastName, phone, phoneConfirm, email,
       address, city, department, neighborhood,
       items, extras,
+      fbc, fbp, ttp, ttclid, sourceUrl,
     } = body;
+
+    // Classify from body if no precomputed attribution was passed (e.g. from heartbeat).
+    const attr = attribution || classifyAttribution({ fbc, fbp, ttp, ttclid, sourceUrl });
 
     // Identity trigger: phone OR email is enough to create the draft
     const rawPhone = typeof phone === "string" ? phone.trim() : "";
@@ -638,6 +742,7 @@ async function createDraftFromFormData(
     const tags = [
       "releasitnuevo",
       "abandono",
+      ...attr.tags,
       ...(mainQty > 0 ? [`bundle-${mainQty}`] : []),
       ...(missingDepartment ? ["sin-departamento"] : []),
       ...(missingAddress ? ["sin-direccion"] : []),
@@ -648,6 +753,9 @@ async function createDraftFromFormData(
 
     const customAttributes = [
       { key: "Fuente", value: "ReleasitNuevo Abandono" },
+      { key: "Atribución", value: sourceLabel(attr.source) },
+      ...(attr.data.ttclid ? [{ key: "TikTok Click ID", value: attr.data.ttclid }] : []),
+      ...(attr.data.fbc ? [{ key: "Facebook Click ID", value: attr.data.fbc }] : []),
       { key: "Telefono", value: formattedPhone || "N/A" },
       { key: "Telefono confirmacion", value: formattedPhoneConfirm || "" },
       { key: "Email", value: rawEmail || "" },
@@ -717,6 +825,8 @@ async function createDraftFromFormData(
             address, city, department, neighborhood, email: rawEmail,
           }),
           status: "open",
+          attributionSource: attr.source,
+          attributionData: JSON.stringify(attr.data),
         },
       });
     } catch (dbErr: any) {
@@ -927,7 +1037,7 @@ async function handleHeartbeat(request: Request, body: any) {
   try {
     const url = new URL(request.url);
     const shop = url.searchParams.get("shop") || "unknown";
-    const { sessionId, status, page, formData, cartData, extrasData } = body;
+    const { sessionId, status, page, formData, cartData, extrasData, fbc, fbp, ttp, ttclid, sourceUrl } = body;
 
     if (!sessionId) {
       return json({ success: false, error: "Missing sessionId" }, { status: 400 });
@@ -937,6 +1047,8 @@ async function handleHeartbeat(request: Request, body: any) {
       || request.headers.get("cf-connecting-ip")
       || "";
     const userAgent = body.userAgent || request.headers.get("user-agent") || "";
+
+    const attribution = classifyAttribution({ fbc, fbp, ttp, ttclid, sourceUrl });
 
     // Upsert session: create if new, update if exists
     await db.activeSession.upsert({
@@ -951,6 +1063,8 @@ async function handleHeartbeat(request: Request, body: any) {
         cartData: cartData ? JSON.stringify(cartData) : null,
         extrasData: extrasData ? JSON.stringify(extrasData) : null,
         status: status || "active",
+        attributionSource: attribution.source,
+        attributionData: JSON.stringify(attribution.data),
         lastSeenAt: new Date(),
       },
       update: {
@@ -959,13 +1073,17 @@ async function handleHeartbeat(request: Request, body: any) {
         cartData: cartData ? JSON.stringify(cartData) : undefined,
         extrasData: extrasData ? JSON.stringify(extrasData) : undefined,
         status: status || "active",
+        // Keep the first attribution we saw — don't overwrite with weaker signals
+        // (e.g. URL params get stripped on subsequent navigations)
+        attributionSource: attribution.source !== "directo" ? attribution.source : undefined,
+        attributionData: attribution.source !== "directo" ? JSON.stringify(attribution.data) : undefined,
         lastSeenAt: new Date(),
       },
     });
 
     // Auto-create draft when session explicitly closes (pagehide / tab close).
     if (status === "closed" && formData) {
-      await tryAutoDraft(shop, sessionId, formData, cartData || [], extrasData || [], clientIp, "heartbeat-close");
+      await tryAutoDraft(shop, sessionId, formData, cartData || [], extrasData || [], clientIp, "heartbeat-close", attribution);
     }
 
     // Throttled stale-session sweep: every ~60s, find sessions that stopped
@@ -1013,7 +1131,19 @@ async function sweepStaleSessions(shop: string, fallbackIp: string) {
       let extras: any[] = [];
       try { items = JSON.parse(s.cartData || "[]"); } catch {}
       try { extras = JSON.parse(s.extrasData || "[]"); } catch {}
-      await tryAutoDraft(shop, s.id, form, items, extras, s.ip || fallbackIp, "sweep");
+      // Reuse the attribution captured during the session's lifetime.
+      let savedAttr: AttributionResult | undefined;
+      if (s.attributionSource) {
+        let data: Record<string, string> = {};
+        try { data = JSON.parse(s.attributionData || "{}"); } catch {}
+        savedAttr = {
+          source: s.attributionSource as AttributionResult["source"],
+          reason: "session_snapshot",
+          data,
+          tags: [`attr-${s.attributionSource}`],
+        };
+      }
+      await tryAutoDraft(shop, s.id, form, items, extras, s.ip || fallbackIp, "sweep", savedAttr);
     }
   }
 
@@ -1034,6 +1164,7 @@ async function tryAutoDraft(
   extras: any[],
   clientIp: string,
   tag: string,
+  attribution?: AttributionResult,
 ) {
   try {
     const phoneOk = typeof form.phone === "string" && form.phone.trim().length >= 7;
@@ -1062,7 +1193,7 @@ async function tryAutoDraft(
     }
 
     const admin = await getAdmin(shop);
-    const result = await createDraftFromFormData(admin, shop, { ...form, items, extras }, clientIp || "N/A");
+    const result = await createDraftFromFormData(admin, shop, { ...form, items, extras }, clientIp || "N/A", attribution);
     if (result.draftOrderId) {
       console.log(`[AutoDraft:${tag}] CREATED session=${sessionId} draft=${result.draftOrderId}`);
     } else if (result.error) {

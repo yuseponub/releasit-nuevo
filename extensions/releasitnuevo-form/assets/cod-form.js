@@ -78,6 +78,7 @@
 
   function sendHeartbeat(status) {
     try {
+      var attribution = getAttribution();
       var payload = JSON.stringify({
         sessionId: heartbeatSessionId,
         status: status || 'active',
@@ -86,6 +87,11 @@
         cartData: getCartSnapshot(),
         extrasData: getExtrasSnapshot(),
         userAgent: navigator.userAgent,
+        fbc: attribution.fbc,
+        fbp: attribution.fbp,
+        ttp: attribution.ttp,
+        ttclid: attribution.ttclid,
+        sourceUrl: attribution.sourceUrl,
       });
 
       // Use sendBeacon for 'closed' status (survives page unload)
@@ -173,6 +179,20 @@
       }
     } catch(e) {}
     return cookies;
+  }
+
+  // Aggregate marketing attribution signals from both networks.
+  // Used by trackEvent, heartbeat, and order creation so backend can classify.
+  function getAttribution() {
+    var fb = getFbCookies();
+    var tt = getTtCookies();
+    return {
+      fbc: fb.fbc || '',
+      fbp: fb.fbp || '',
+      ttp: tt.ttp || '',
+      ttclid: tt.ttclid || '',
+      sourceUrl: window.location.href,
+    };
   }
 
   function trackEvent(eventName, data) {
@@ -1064,6 +1084,8 @@
       return;
     }
 
+    Object.assign(draftData, getAttribution());
+
     try {
       var resp = await fetch(APP_PROXY_BASE + '/create-draft', {
         method: 'POST',
@@ -1182,6 +1204,8 @@
     try {
       console.log('[RN] Submitting order to:', APP_PROXY_BASE + '/create-order');
       console.log('[RN] Data:', JSON.stringify(data));
+
+      Object.assign(data, getAttribution());
 
       const resp = await fetch(APP_PROXY_BASE + '/create-order', {
         method: 'POST',
@@ -1322,6 +1346,8 @@
       total: grandTotal,
       draftOrderId: currentDraftId || null,
     };
+
+    Object.assign(data, getAttribution());
 
     try {
       const resp = await fetch(APP_PROXY_BASE + '/create-order', {
