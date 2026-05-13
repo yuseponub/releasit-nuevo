@@ -153,9 +153,32 @@
     return cookies;
   }
 
+  // Read TikTok cookies for attribution. _ttp is set by the TikTok pixel.
+  // ttclid arrives in the URL on click — persist it to a cookie so it survives
+  // navigation, then prefer URL value over cookie if both exist.
+  function getTtCookies() {
+    var cookies = {};
+    try {
+      var match_ttp = document.cookie.match(/(^| )_ttp=([^;]+)/);
+      if (match_ttp) cookies.ttp = match_ttp[2];
+
+      var urlTtclid = new URLSearchParams(window.location.search).get('ttclid');
+      if (urlTtclid) {
+        cookies.ttclid = urlTtclid;
+        // Persist for 30 days so subsequent pages keep attribution
+        document.cookie = 'ttclid=' + urlTtclid + ';max-age=2592000;path=/;samesite=lax';
+      } else {
+        var match_ttclid = document.cookie.match(/(^| )ttclid=([^;]+)/);
+        if (match_ttclid) cookies.ttclid = match_ttclid[2];
+      }
+    } catch(e) {}
+    return cookies;
+  }
+
   function trackEvent(eventName, data) {
     var eventId = 'rn_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     var fbCookies = getFbCookies();
+    var ttCookies = getTtCookies();
 
     // Facebook Pixel (client-side)
     try {
@@ -170,7 +193,7 @@
       }
     } catch(e) {}
 
-    // Backend tracking (Conversions API + monitoring DB)
+    // Backend tracking (Meta CAPI + TikTok Events API + monitoring DB)
     try {
       fetch(APP_PROXY_BASE + '/track', {
         method: 'POST',
@@ -184,27 +207,51 @@
           timestamp: Date.now(),
           fbc: fbCookies.fbc || '',
           fbp: fbCookies.fbp || '',
+          ttp: ttCookies.ttp || '',
+          ttclid: ttCookies.ttclid || '',
         }),
       }).catch(function(){});
     } catch(e) {}
   }
 
-  // Real Shopify variant IDs mapped from config keys
-  const REAL_VARIANT_IDS = {
-    'elixir': '47357476634860',
-    'ashwagandha': '47357499277548',
-    'magnesio': '47357496197356',
-    'magnesio-forte': '47357496197356',
-    'melatonina-magnesio': '47357476634860',
+  // Per-shop real Shopify variant ID maps. Keys can be either a configKey
+  // ("elixir", "ashwagandha", …) OR a full fake variantId ("elixir-variant-2")
+  // — full match takes precedence so we can route bundle sizes to distinct variants.
+  const REAL_VARIANT_IDS_BY_SHOP = {
+    '2db6b1-ea.myshopify.com': {
+      'elixir': '47357476634860',
+      'ashwagandha': '47357499277548',
+      'magnesio': '47357496197356',
+      'magnesio-forte': '47357496197356',
+      'melatonina-magnesio': '47357476634860',
+    },
+    '6xvhnx-1v.myshopify.com': {
+      // melatonina-magnesio is the only product on the new store. It has 3
+      // variants (X1, X2, X3) so the bundle qty maps to different variant IDs.
+      'elixir-variant-1': '43388533899382',
+      'elixir-variant-2': '43388533932150',
+      'elixir-variant-3': '43388533964918',
+      'elixir': '43388533899382', // fallback to X1
+      'melatonina-magnesio-1': '43388533899382',
+      'melatonina-magnesio-2': '43388533932150',
+      'melatonina-magnesio-3': '43388533964918',
+      'melatonina-magnesio': '43388533899382',
+    },
   };
+  const __SHOP__ = (typeof window !== 'undefined' && window.__RELEASITNUEVO__ && window.__RELEASITNUEVO__.shop) || '';
+  const REAL_VARIANT_IDS = REAL_VARIANT_IDS_BY_SHOP[__SHOP__] || {};
 
   // Resolve a real Shopify variant ID
   function resolveVariantId(item) {
     // If it already looks like a numeric Shopify ID, use it
     if (/^\d+$/.test(item.variantId)) return item.variantId;
 
-    // Extract config key from fake variant ID (e.g., "elixir-variant-1" → "elixir")
     const vid = item.variantId || '';
+
+    // Try full fake ID first (e.g., "elixir-variant-2" → distinct variant on new store)
+    if (REAL_VARIANT_IDS[vid]) return REAL_VARIANT_IDS[vid];
+
+    // Then config key (e.g., "elixir-variant-1" → "elixir")
     const configKey = vid.split('-variant-')[0]; // handles "elixir-variant-1"
     if (REAL_VARIANT_IDS[configKey]) return REAL_VARIANT_IDS[configKey];
 

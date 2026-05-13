@@ -740,10 +740,21 @@ async function createDraftFromFormData(
 
 const FB_PIXEL_ID = process.env.FB_PIXEL_ID || "1639820782820483";
 const FB_ACCESS_TOKEN = process.env.FB_ACCESS_TOKEN || "";
+const TIKTOK_PIXEL_ID = process.env.TIKTOK_PIXEL_ID || "CUJ57F3C77U1Q5S84OGG";
+const TIKTOK_ACCESS_TOKEN = process.env.TIKTOK_ACCESS_TOKEN || "";
+
+// Map our internal event names to TikTok standard event names.
+// "Purchase" maps to "CompletePayment" — the optimization event used by ad campaigns.
+const TIKTOK_EVENT_NAMES: Record<string, string> = {
+  Purchase: "CompletePayment",
+  AddToCart: "AddToCart",
+  InitiateCheckout: "InitiateCheckout",
+  ViewContent: "ViewContent",
+};
 
 async function handleTrackEvent(request: Request, body: any) {
   try {
-    const { eventName, eventId, data: eventData, userAgent, sourceUrl, timestamp, fbc, fbp } = body;
+    const { eventName, eventId, data: eventData, userAgent, sourceUrl, timestamp, fbc, fbp, ttp, ttclid } = body;
 
     const evName = eventName || "PageView";
     const evId = eventId;
@@ -833,6 +844,73 @@ async function handleTrackEvent(request: Request, body: any) {
         console.log(`[Track] ${evName} → Meta:`, JSON.stringify(fbResult));
       } catch (fbErr: any) {
         console.error("[Track] Meta API error:", fbErr.message);
+      }
+    }
+
+    // 3. Send to TikTok Events API (only for key events)
+    const ttEventName = TIKTOK_EVENT_NAMES[evName];
+    if (TIKTOK_ACCESS_TOKEN && ttEventName) {
+      const hashSHA256 = (val: string) => {
+        if (!val) return undefined;
+        return crypto.createHash("sha256").update(val.trim().toLowerCase()).digest("hex");
+      };
+
+      const formattedPhone = phone ? formatPhoneCO(phone) : "";
+
+      const ttPayload = {
+        event_source: "web",
+        event_source_id: TIKTOK_PIXEL_ID,
+        data: [{
+          event: ttEventName,
+          event_time: Math.floor(Date.now() / 1000),
+          event_id: evId,
+          user: {
+            email: email ? hashSHA256(email) : undefined,
+            phone: formattedPhone ? hashSHA256(formattedPhone.replace("+", "")) : undefined,
+            first_name: firstName ? hashSHA256(firstName) : undefined,
+            last_name: lastName ? hashSHA256(lastName) : undefined,
+            city: city ? hashSHA256(city) : undefined,
+            state: department ? hashSHA256(department) : undefined,
+            country: hashSHA256("co"),
+            external_id: externalId ? hashSHA256(externalId) : undefined,
+            ip: clientIp || undefined,
+            user_agent: userAgent,
+            ttp: ttp || undefined,
+            ttclid: ttclid || undefined,
+            locale: "es_CO",
+          },
+          properties: {
+            currency: "COP",
+            value: value,
+            content_type: "product",
+            order_id: orderId,
+            contents: (eventData?.contents || eventData?.content_ids?.map((id: string) => ({ id, quantity: 1 })))
+              ?.map((c: any) => ({
+                content_id: String(c.id || c.content_id || ""),
+                quantity: c.quantity || 1,
+                price: c.price,
+              })),
+          },
+          page: { url: sourceUrl },
+        }],
+      };
+
+      try {
+        const ttResp = await fetch(
+          "https://business-api.tiktok.com/open_api/v1.3/event/track/",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Access-Token": TIKTOK_ACCESS_TOKEN,
+            },
+            body: JSON.stringify(ttPayload),
+          }
+        );
+        const ttResult = await ttResp.json();
+        console.log(`[Track] ${evName} → TikTok (${ttEventName}):`, JSON.stringify(ttResult));
+      } catch (ttErr: any) {
+        console.error("[Track] TikTok API error:", ttErr.message);
       }
     }
 
