@@ -283,6 +283,19 @@ function sourceLabel(source: string): string {
   }
 }
 
+// Reject malformed emails (e.g. "foo@gmail" with no TLD) so Shopify
+// doesn't fail the whole order with "Customer email address is invalid".
+function isValidEmail(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmed);
+}
+
+function sanitizeEmail(value: unknown): string {
+  return isValidEmail(value) ? (value as string).trim() : "";
+}
+
 async function handleCreateOrder(request: Request, body: any) {
   try {
     const { admin, shop } = await authProxy(request);
@@ -298,6 +311,13 @@ async function handleCreateOrder(request: Request, body: any) {
     if (!firstName || !lastName || !phone || !address || !city || !items?.length) {
       return json({ success: false, error: "Faltan campos requeridos" }, { status: 400 });
     }
+
+    // Only send the email to Shopify if it's well-formed; otherwise the whole
+    // order fails with "Customer email address is invalid". Raw value stays
+    // in the note so the seller can still see what the customer typed.
+    const rawEmail = typeof email === "string" ? email.trim() : "";
+    const safeEmail = sanitizeEmail(email);
+    const emailInvalid = !!rawEmail && !safeEmail;
 
     const missingDepartment = !department || !String(department).trim();
     const attr = classifyAttribution({ fbc, fbp, ttp, ttclid, sourceUrl });
@@ -375,7 +395,7 @@ async function handleCreateOrder(request: Request, body: any) {
     let customerId: string | null = null;
     try {
       const customerResult = await findOrCreateCustomer(admin, {
-        firstName, lastName, phone: formattedPhone, email,
+        firstName, lastName, phone: formattedPhone, email: safeEmail || undefined,
       });
       customerId = customerResult;
       console.log("[CreateOrder] Customer ID:", customerId);
@@ -390,7 +410,7 @@ async function handleCreateOrder(request: Request, body: any) {
       `Cliente: ${firstName} ${lastName}`,
       `Telefono: ${formattedPhone}`,
       `Tel. confirmacion: ${formattedPhoneConfirm || 'N/A'}`,
-      `Email: ${email || 'N/A'}`,
+      `Email: ${rawEmail || 'N/A'}${emailInvalid ? ' (INVALIDO - no enviado a Shopify)' : ''}`,
       ``,
       `Direccion: ${address}`,
       `Barrio: ${neighborhood || 'N/A'}`,
@@ -410,8 +430,8 @@ async function handleCreateOrder(request: Request, body: any) {
     // Build customer field for order
     const customerField = customerId
       ? { toAssociate: { id: customerId } }
-      : email
-        ? { toUpsert: { email, firstName, lastName, phone: formattedPhone } }
+      : safeEmail
+        ? { toUpsert: { email: safeEmail, firstName, lastName, phone: formattedPhone } }
         : undefined;
 
     const orderResponse = await admin.graphql(`
@@ -448,7 +468,7 @@ async function handleCreateOrder(request: Request, body: any) {
             countryCode: "CO",
             zip: "000000",
           },
-          email: email || undefined,
+          email: safeEmail || undefined,
           phone: formattedPhone,
           note: orderNote,
           tags: [
@@ -457,6 +477,7 @@ async function handleCreateOrder(request: Request, body: any) {
             ...attr.tags,
             `bundle-${totalQty}`,
             ...(missingDepartment ? ["sin-departamento"] : []),
+            ...(emailInvalid ? ["email-invalido"] : []),
           ],
           financialStatus: "PENDING",
           customAttributes: [
@@ -605,9 +626,14 @@ async function createDraftFromFormData(
     // Classify from body if no precomputed attribution was passed (e.g. from heartbeat).
     const attr = attribution || classifyAttribution({ fbc, fbp, ttp, ttclid, sourceUrl });
 
-    // Identity trigger: phone OR email is enough to create the draft
+    // Identity trigger: phone OR email is enough to create the draft.
+    // Email is kept raw for the note (so the seller can see what was typed),
+    // but only safeEmail is sent to Shopify so a malformed value doesn't
+    // sink the whole draft.
     const rawPhone = typeof phone === "string" ? phone.trim() : "";
     const rawEmail = typeof email === "string" ? email.trim() : "";
+    const safeEmail = sanitizeEmail(email);
+    const emailInvalid = !!rawEmail && !safeEmail;
     if (!rawPhone && !rawEmail) {
       return { draftOrderId: "", error: "Telefono o email requerido", status: 400 };
     }
@@ -693,7 +719,7 @@ async function createDraftFromFormData(
         firstName: safeFirstName,
         lastName: safeLastName || "Sin apellido",
         phone: formattedPhone,
-        email: rawEmail || undefined,
+        email: safeEmail || undefined,
       });
       console.log("[CreateDraft] Customer ID:", customerId);
     } catch (e: any) {
@@ -707,7 +733,7 @@ async function createDraftFromFormData(
       `Cliente: ${safeFirstName} ${safeLastName}`.trim(),
       formattedPhone ? `Telefono: ${formattedPhone}` : '',
       formattedPhoneConfirm ? `Tel. confirmacion: ${formattedPhoneConfirm}` : '',
-      rawEmail ? `Email: ${rawEmail}` : '',
+      rawEmail ? `Email: ${rawEmail}${emailInvalid ? ' (INVALIDO - no enviado a Shopify)' : ''}` : '',
       ``,
       address ? `Direccion: ${address}` : 'Direccion: (pendiente)',
       neighborhood ? `Barrio: ${neighborhood}` : '',
@@ -748,6 +774,7 @@ async function createDraftFromFormData(
       ...(missingAddress ? ["sin-direccion"] : []),
       ...(!firstName ? ["sin-nombre"] : []),
       ...(!rawEmail ? ["sin-email"] : []),
+      ...(emailInvalid ? ["email-invalido"] : []),
       ...(!rawPhone ? ["sin-telefono"] : []),
     ];
 
@@ -779,7 +806,7 @@ async function createDraftFromFormData(
         tags,
         lineItems,
         customAttributes,
-        ...(rawEmail ? { email: rawEmail } : {}),
+        ...(safeEmail ? { email: safeEmail } : {}),
         ...(formattedPhone ? { phone: formattedPhone } : {}),
         ...(shippingAddress ? { shippingAddress } : {}),
         ...(customerId ? { purchasingEntity: { customerId } } : {}),
@@ -1221,6 +1248,8 @@ async function findOrCreateCustomer(
   admin: any,
   data: { firstName: string; lastName: string; phone: string; email?: string }
 ): Promise<string | null> {
+  // Defensive: never feed a malformed email to Shopify, even if a caller forgot to sanitize.
+  const cleanEmail = isValidEmail(data.email) ? (data.email as string).trim() : undefined;
   // First try to find by phone
   try {
     const searchResp = await admin.graphql(`
@@ -1244,7 +1273,7 @@ async function findOrCreateCustomer(
   }
 
   // If email provided, also search by email
-  if (data.email) {
+  if (cleanEmail) {
     try {
       const emailResp = await admin.graphql(`
         query findCustomer($query: String!) {
@@ -1253,7 +1282,7 @@ async function findOrCreateCustomer(
           }
         }
       `, {
-        variables: { query: `email:${data.email}` },
+        variables: { query: `email:${cleanEmail}` },
       });
 
       const emailData = await emailResp.json();
@@ -1282,7 +1311,7 @@ async function findOrCreateCustomer(
           firstName: data.firstName,
           lastName: data.lastName,
           phone: data.phone,
-          email: data.email || undefined,
+          email: cleanEmail,
           tags: ["releasitnuevo", "cod"],
         },
       },
