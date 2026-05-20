@@ -1757,6 +1757,32 @@
       }
     });
 
+    // Intercept ANY button/link whose visible text says "PAGAR AL RECIBIR"
+    // → open the COD modal. Lets the merchant put COD on theme buttons
+    // without rewiring hrefs. Capture phase fires before the theme/Instant
+    // handlers, so form submissions and external links are also short-circuited.
+    document.addEventListener('click', function (e) {
+      // Never hijack clicks inside our own modal — submit/close must work.
+      if (e.target.closest && e.target.closest('#rn-overlay, .rn-modal')) return;
+      var clickable = e.target.closest && e.target.closest('button, a, [role="button"], input[type="submit"], input[type="button"]');
+      if (!clickable) return;
+      // Skip elements already wired with our hash triggers (handled above).
+      var href = (clickable.getAttribute && clickable.getAttribute('href') || '').toLowerCase();
+      if (href.indexOf('#rn-open') !== -1 || href.indexOf('#rn-add') !== -1) return;
+      // Get visible text. For <input>, use value; otherwise innerText.
+      var raw = clickable.tagName === 'INPUT'
+        ? (clickable.value || '')
+        : (clickable.innerText || clickable.textContent || '');
+      var text = raw.replace(/\s+/g, ' ').trim().toLowerCase();
+      if (!text) return;
+      if (!/pagar\s+al\s+recibir/.test(text)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      extraProducts = [];
+      openModal(detectPageProduct());
+    }, true);
+
     // Also check if page loaded with hash
     function handleHash() {
       const hash = window.location.hash;
