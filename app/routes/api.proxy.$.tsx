@@ -427,12 +427,15 @@ async function handleCreateOrder(request: Request, body: any) {
       `Fecha: ${new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' })}`,
     ].join("\n");
 
-    // Build customer field for order
+    // Build customer field for order.
+    // We only set it when we have a confirmed customerId — using `toUpsert` with
+    // an email that belongs to *another* customer makes Shopify return
+    // "Customer email address has already been taken" and block the order.
+    // When customerId is null the order still carries `email` at the top level,
+    // which is enough for COD follow-up; no customer record gets attached.
     const customerField = customerId
       ? { toAssociate: { id: customerId } }
-      : safeEmail
-        ? { toUpsert: { email: safeEmail, firstName, lastName, phone: formattedPhone } }
-        : undefined;
+      : undefined;
 
     const orderResponse = await admin.graphql(`
       mutation orderCreate($order: OrderCreateOrderInput!, $options: OrderCreateOptionsInput) {
@@ -1243,6 +1246,40 @@ function formatPhoneCO(phone: string): string {
   return "+57" + digits; // fallback
 }
 
+// Find a customer by an exact email match (handles capitalization + special chars
+// like "+" by trying both quoted and unquoted variants and falling back to
+// scanning the first page of results case-insensitively).
+async function findCustomerByEmail(admin: any, email: string): Promise<string | null> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+
+  // Shopify customer search: quoting the value is the most reliable form for
+  // emails containing "+", ".", etc. — without quotes, Shopify tokenizes on "+".
+  const queries = [`email:"${normalized}"`, `email:${normalized}`];
+  for (const query of queries) {
+    try {
+      const resp = await admin.graphql(
+        `query findCustomer($query: String!) {
+          customers(first: 10, query: $query) {
+            edges { node { id, email } }
+          }
+        }`,
+        { variables: { query } },
+      );
+      const data = await resp.json();
+      const edges = data.data?.customers?.edges || [];
+      // Prefer exact (case-insensitive) match, fall back to first hit if Shopify
+      // returns adjacent matches.
+      const exact = edges.find((e: any) => (e?.node?.email || "").toLowerCase() === normalized);
+      const hit = exact?.node?.id || edges[0]?.node?.id;
+      if (hit) return hit;
+    } catch (e: any) {
+      console.error("[Customer] Email search failed:", e.message, "query:", query);
+    }
+  }
+  return null;
+}
+
 // Find or create a customer by phone, returns customer GID or null
 async function findOrCreateCustomer(
   admin: any,
@@ -1274,25 +1311,10 @@ async function findOrCreateCustomer(
 
   // If email provided, also search by email
   if (cleanEmail) {
-    try {
-      const emailResp = await admin.graphql(`
-        query findCustomer($query: String!) {
-          customers(first: 1, query: $query) {
-            edges { node { id } }
-          }
-        }
-      `, {
-        variables: { query: `email:${cleanEmail}` },
-      });
-
-      const emailData = await emailResp.json();
-      const existing = emailData.data?.customers?.edges?.[0]?.node?.id;
-      if (existing) {
-        console.log("[Customer] Found by email:", existing);
-        return existing;
-      }
-    } catch (e: any) {
-      console.error("[Customer] Email search failed:", e.message);
+    const byEmail = await findCustomerByEmail(admin, cleanEmail);
+    if (byEmail) {
+      console.log("[Customer] Found by email:", byEmail);
+      return byEmail;
     }
   }
 
@@ -1327,9 +1349,57 @@ async function findOrCreateCustomer(
     const errors = createData.data?.customerCreate?.userErrors;
     if (errors?.length) {
       console.error("[Customer] Create errors:", errors);
-      // If "phone has already been taken", try to find again
-      if (errors.some((e: any) => e.message?.includes("taken"))) {
-        // Phone might exist under different format, try broader search
+      const mentions = (needle: string) =>
+        errors.some((e: any) => {
+          const msg = (e?.message || "").toLowerCase();
+          const fields = (e?.field || []).join(",").toLowerCase();
+          return msg.includes(needle) || fields.includes(needle);
+        });
+      const taken = errors.some((e: any) => (e?.message || "").toLowerCase().includes("taken"));
+
+      // Email collision: the customer already exists under that email but our
+      // initial search didn't see it (search index lag, "+"-in-email tokenization,
+      // case differences). Re-search by email — that's the authoritative lookup.
+      if (taken && cleanEmail && mentions("email")) {
+        const byEmail = await findCustomerByEmail(admin, cleanEmail);
+        if (byEmail) {
+          console.log("[Customer] Resolved email collision via re-search:", byEmail);
+          return byEmail;
+        }
+        // Last resort: retry create WITHOUT the email so we at least get a
+        // customer id for this phone — the email stays on the order itself.
+        try {
+          const retryResp = await admin.graphql(
+            `mutation customerCreate($input: CustomerInput!) {
+              customerCreate(input: $input) {
+                customer { id }
+                userErrors { field, message }
+              }
+            }`,
+            {
+              variables: {
+                input: {
+                  firstName: data.firstName,
+                  lastName: data.lastName,
+                  phone: data.phone,
+                  tags: ["releasitnuevo", "cod"],
+                },
+              },
+            },
+          );
+          const retryData = await retryResp.json();
+          const id = retryData.data?.customerCreate?.customer?.id;
+          if (id) {
+            console.log("[Customer] Created without email (collision fallback):", id);
+            return id;
+          }
+        } catch (e: any) {
+          console.error("[Customer] Email-collision retry failed:", e.message);
+        }
+      }
+
+      // Phone collision: existing customer with this phone in a different format.
+      if (taken && mentions("phone")) {
         const retryResp = await admin.graphql(`
           query findCustomer($query: String!) {
             customers(first: 1, query: $query) {
@@ -1340,7 +1410,8 @@ async function findOrCreateCustomer(
           variables: { query: data.phone.replace("+", "") },
         });
         const retryData = await retryResp.json();
-        return retryData.data?.customers?.edges?.[0]?.node?.id || null;
+        const id = retryData.data?.customers?.edges?.[0]?.node?.id;
+        if (id) return id;
       }
     }
   } catch (e: any) {
