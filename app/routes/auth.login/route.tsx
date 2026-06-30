@@ -11,6 +11,7 @@ import {
   TextField,
 } from "@shopify/polaris";
 import polarisStyles from "@shopify/polaris/build/esm/styles.css?url";
+import polarisTranslations from "@shopify/polaris/locales/en.json";
 import { useState } from "react";
 import { login } from "../../shopify.server";
 
@@ -18,7 +19,7 @@ export const links = () => [{ rel: "stylesheet", href: polarisStyles }];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   const errors = login(request);
-  return json({ errors, polarisTranslations: require("@shopify/polaris/locales/en.json") });
+  return json({ errors, polarisTranslations });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -33,7 +34,7 @@ export default function Auth() {
   const allErrors = { ...(errors || {}), ...(actionData?.errors || {}) } as Record<string, string>;
 
   return (
-    <AppProvider i18n={require("@shopify/polaris/locales/en.json")}>
+    <AppProvider i18n={polarisTranslations}>
       <Page>
         <Card>
           <Form method="post">
