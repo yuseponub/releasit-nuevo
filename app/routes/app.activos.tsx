@@ -90,6 +90,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       ip: s.ip || '-',
       customer: form.firstName ? `${form.firstName} ${form.lastName || ''}`.trim() : 'Anonimo',
       phone: form.phone || '-',
+      phoneConfirm: form.phoneConfirm || '-',
       email: form.email || '-',
       city: form.city || '-',
       address: form.address || '-',
@@ -156,6 +157,7 @@ export default function CarritosActivos() {
     clickableId(s.shortId),
     s.customer,
     s.phone,
+    s.phoneConfirm,
     s.products,
     s.city,
     s.ip,
@@ -167,6 +169,7 @@ export default function CarritosActivos() {
     clickableId(s.shortId),
     s.customer,
     s.phone,
+    s.phoneConfirm,
     s.products,
     s.city,
     s.ip,
@@ -178,6 +181,7 @@ export default function CarritosActivos() {
     clickableId(s.shortId),
     s.customer,
     s.phone,
+    s.phoneConfirm,
     s.products,
     s.city,
     s.ip,
@@ -247,8 +251,8 @@ export default function CarritosActivos() {
               </InlineStack>
               {activeRows.length > 0 ? (
                 <DataTable
-                  columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text"]}
-                  headings={["ID", "Cliente", "Telefono", "Productos", "Ciudad", "IP", "Estado", "Tiempo"]}
+                  columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text", "text"]}
+                  headings={["ID", "Cliente", "Telefono", "Tel. respaldo", "Productos", "Ciudad", "IP", "Estado", "Tiempo"]}
                   rows={activeRows}
                 />
               ) : (
@@ -267,8 +271,8 @@ export default function CarritosActivos() {
               <BlockStack gap="400">
                 <Text as="h2" variant="headingMd">Cerrados recientemente (10 min)</Text>
                 <DataTable
-                  columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text"]}
-                  headings={["ID", "Cliente", "Telefono", "Productos", "Ciudad", "IP", "Duracion", "Hace"]}
+                  columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text", "text"]}
+                  headings={["ID", "Cliente", "Telefono", "Tel. respaldo", "Productos", "Ciudad", "IP", "Duracion", "Hace"]}
                   rows={closedRows}
                 />
               </BlockStack>
@@ -284,8 +288,8 @@ export default function CarritosActivos() {
               {historyRows.length > 0 ? (
                 <>
                   <DataTable
-                    columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text", "text"]}
-                    headings={["ID", "Cliente", "Telefono", "Productos", "Ciudad", "IP", "Estado", "Duracion", "Fecha"]}
+                    columnContentTypes={["text", "text", "text", "text", "text", "text", "text", "text", "text", "text"]}
+                    headings={["ID", "Cliente", "Telefono", "Tel. respaldo", "Productos", "Ciudad", "IP", "Estado", "Duracion", "Fecha"]}
                     rows={historyRows}
                   />
                   {historyTotalPages > 1 && (
@@ -325,6 +329,7 @@ export default function CarritosActivos() {
               <Text as="h3" variant="headingMd">Datos del cliente</Text>
               <DetailRow label="Nombre" value={selectedSession.customer} />
               <DetailRow label="Telefono" value={selectedSession.phone} />
+              <DetailRow label="Tel. de respaldo" value={selectedSession.phoneConfirm} />
               <DetailRow label="Email" value={selectedSession.email} />
               <DetailRow label="Direccion" value={selectedSession.address} />
               <DetailRow label="Barrio" value={selectedSession.neighborhood} />
