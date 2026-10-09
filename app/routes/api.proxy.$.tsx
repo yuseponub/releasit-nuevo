@@ -4,6 +4,7 @@ import { unauthenticated } from "../shopify.server";
 import db from "../db.server";
 import { calcBundlePrice, distributePrice } from "../models/bundle-pricing.server";
 import crypto from "crypto";
+import { notifyMorfxAbandonedCart } from "../models/morfx.server";
 
 /**
  * App Proxy handler (catch-all route).
@@ -598,6 +599,7 @@ async function handleCreateDraft(request: Request, body: any) {
       || request.headers.get("x-real-ip")
       || "N/A";
 
+    await notifyMorfxAbandonedCart(shop, body, body?.items || []);
     const result = await createDraftFromFormData(admin, shop, body, clientIp);
     if (result.error) {
       return json({ success: false, error: result.error }, { status: result.status || 500 });
@@ -1111,6 +1113,8 @@ async function handleHeartbeat(request: Request, body: any) {
       },
     });
 
+    ensureSweepTimer(shop);
+
     // Auto-create draft when session explicitly closes (pagehide / tab close).
     if (status === "closed" && formData) {
       await tryAutoDraft(shop, sessionId, formData, cartData || [], extrasData || [], clientIp, "heartbeat-close", attribution);
@@ -1135,6 +1139,20 @@ async function handleHeartbeat(request: Request, body: any) {
 }
 
 let lastSweepAt = 0;
+
+// The heartbeat-triggered sweep only runs when ANOTHER visitor sends a heartbeat;
+// with low traffic an abandoned cart waited hours or days. From the first
+// heartbeat on, sweep every minute (started lazily: server-only code).
+function ensureSweepTimer(shop: string) {
+  const g = globalThis as unknown as { __releasitSweepShops?: Set<string>; __releasitSweepTimer?: ReturnType<typeof setInterval> };
+  (g.__releasitSweepShops ??= new Set()).add(shop);
+  if (g.__releasitSweepTimer) return;
+  g.__releasitSweepTimer = setInterval(async () => {
+    for (const s of g.__releasitSweepShops ?? []) {
+      try { await sweepStaleSessions(s, ""); } catch (e: any) { console.error("[TimerSweep] failed:", e?.message); }
+    }
+  }, 60_000);
+}
 
 async function sweepStaleSessions(shop: string, fallbackIp: string) {
   const now = Date.now();
@@ -1203,6 +1221,9 @@ async function tryAutoDraft(
       console.log(`[AutoDraft:${tag}] skip (no identity) session=${sessionId}`);
       return;
     }
+
+    // MorfX first: the Shopify draft below can fail or be skipped; MorfX dedupes per phone/day.
+    if (phoneOk) await notifyMorfxAbandonedCart(shop, form, items, sessionId);
 
     if (phoneOk) {
       const formattedPhone = formatPhoneCO(form.phone.trim());
